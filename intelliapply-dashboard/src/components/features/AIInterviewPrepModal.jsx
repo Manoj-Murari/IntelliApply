@@ -1,47 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useStore } from '../../lib/store';
-import { X, Sparkles, HelpCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { X, Sparkles, HelpCircle, AlertTriangle } from 'lucide-react';
+import AILoader from '../ui/AILoader'; // --- IMPORT ---
+import PasteDescription from '../ui/PasteDescription'; // --- IMPORT ---
 
-function AILoader() {
-    return (
-        <div className="text-center p-8">
-            <Loader2 className="w-12 h-12 text-purple-500 mx-auto animate-spin" />
-            <p className="mt-4 font-semibold text-slate-600">Your AI co-pilot is preparing your interview questions...</p>
-            <p className="text-sm text-slate-500">This may take a moment.</p>
-        </div>
-    );
-}
-
-function PasteDescription({ onGenerate }) {
-    const [pastedDesc, setPastedDesc] = useState('');
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (pastedDesc.trim()) onGenerate(pastedDesc);
-    };
-    return (
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
-            <h3 className="font-semibold text-slate-700">No Description Found</h3>
-            <p className="text-sm text-slate-500">
-                This job was saved without a description. Please paste the
-                job description below to generate interview questions.
-            </p>
-            <textarea
-                value={pastedDesc}
-                onChange={(e) => setPastedDesc(e.target.value)}
-                placeholder="Paste the full job description here..."
-                className="w-full h-48 p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-purple-500"
-                required
-            />
-            <button
-                type="submit"
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-purple-600 rounded-md hover:bg-purple-700 transition-all"
-            >
-                <Sparkles className="w-5 h-5" />
-                Generate Questions
-            </button>
-        </form>
-    );
-}
+// --- AILoader component definition is REMOVED ---
+// --- PasteDescription component definition is REMOVED ---
 
 function QuestionCategory({ title, questions }) {
     if (!questions || questions.length === 0) return null;
@@ -61,12 +25,10 @@ function QuestionCategory({ title, questions }) {
 }
 
 export default function AIInterviewPrepModal({ isOpen, onClose, job, profile }) {
-    // --- THIS IS THE FIX ---
     const isGenerating = useStore(state => state.isGenerating);
     const interviewPrepData = useStore(state => state.interviewPrepData);
     const aiError = useStore(state => state.aiError);
     const generateInterviewPrep = useStore(state => state.generateInterviewPrep);
-    // --- END FIX ---
 
     const [description, setDescription] = useState('');
 
@@ -107,7 +69,7 @@ export default function AIInterviewPrepModal({ isOpen, onClose, job, profile }) 
                         <p><span className="font-semibold">Using Profile:</span> {profile?.profile_name || 'N/A'}</p>
                     </div>
                     {isGenerating ? (
-                        <AILoader />
+                        <AILoader text="Your AI co-pilot is preparing your interview questions..." />
                     ) : aiError ? (
                         <div className="text-center text-red-600 p-8 bg-red-50 rounded-lg">
                             <AlertTriangle className="w-10 h-10 mx-auto mb-3" />
@@ -123,10 +85,10 @@ export default function AIInterviewPrepModal({ isOpen, onClose, job, profile }) 
                     ) : (
                         description ? (
                              <div className="text-center p-8">
-                                 <p className="text-slate-600">Preparing questions...</p>
+                                  <p className="text-slate-600">Preparing questions...</p>
                              </div>
                         ) : (
-                            <PasteDescription onGenerate={onGenerate} />
+                            <PasteDescription onGenerate={onGenerate} buttonText="Generate Questions" />
                         )
                     )}
                 </div>

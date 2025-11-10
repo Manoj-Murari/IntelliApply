@@ -1,62 +1,14 @@
 import React, { useState } from 'react';
 import { useStore } from '../../lib/store';
-import { Search, Loader2, Inbox, Archive, Briefcase, Plus, Linkedin, User } from 'lucide-react';
+import { Search, Loader2, Inbox, Archive, Briefcase, Plus, User } from 'lucide-react';
 import EmptyDashboard from './EmptyDashboard';
 import AllJobs from './AllJobs';
 import KanbanTracker from './KanbanTracker';
+import JobCard from '../ui/JobCard'; // --- IMPORT NEW CARD ---
 
-// --- JobCard Component (for the Inbox) (Unchanged) ---
-function JobCard({ job, setSelectedJob }) {
- 
-  const getPlatform = (url) => {
-    if (!url) return { name: 'Unknown', icon: Briefcase, color: 'bg-slate-100 text-slate-600' };
-    if (url.includes('linkedin')) {
-      return { name: 'LinkedIn', icon: Linkedin, color: 'bg-blue-100 text-blue-700' };
-    }
-    if (url.includes('indeed')) {
-      return { name: 'Indeed', icon: Briefcase, color: 'bg-sky-100 text-sky-700' };
-    }
-    if (url.includes('glassdoor')) {
-      return { name: 'Glassdoor', icon: Briefcase, color: 'bg-emerald-100 text-emerald-700' };
-    }
-    return { name: 'Other', icon: Briefcase, color: 'bg-slate-100 text-slate-600' };
-  };
+// --- JobCard component definition is REMOVED ---
 
-  const platform = getPlatform(job.job_url);
-  const PlatformIcon = platform.icon;
-
-  return (
-    <div 
-      onClick={() => setSelectedJob(job)}
-      className="bg-white p-4 rounded-lg border border-slate-200 hover:shadow-md hover:border-sky-500 cursor-pointer transition-all animate-fade-in"
-    >
-      <span className={`flex items-center gap-1.5 w-fit text-xs font-semibold px-2 py-1 rounded-full mb-2 ${platform.color}`}>
-        <PlatformIcon className="w-3 h-3" />
-        {platform.name}
-      </span>
-      <h3 className="font-bold text-lg text-slate-800 truncate">{job.title}</h3>
-      <p className="text-sm text-slate-600">{job.company}</p>
-      <div className="mt-4 flex gap-2">
-        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-          job.description 
-            ? 'bg-emerald-100 text-emerald-800' 
-            : 'bg-slate-100 text-slate-500'
-        }`}>
-          {job.description ? 'Description ✓' : 'No Description'}
-        </span>
-        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-          job.gemini_rating
-            ? 'bg-blue-100 text-blue-800'
-            : 'bg-slate-100 text-slate-500'
-        }`}>
-          AI: {job.gemini_rating ? `${job.gemini_rating}/10` : 'N/A'}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// --- SkeletonGrid Component (for the Inbox) (Unchanged) ---
+// --- SkeletonGrid Component (for the Inbox) ---
 function SkeletonGrid() {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -76,7 +28,7 @@ function SkeletonGrid() {
     );
 }
 
-// --- JobInbox Component (for the "Inbox" tab) (Unchanged) ---
+// --- JobInbox Component (for the "Inbox" tab) ---
 function JobInbox({ newJobs, setSelectedJob, isSearching }) {
   const searches = useStore(state => state.searches);
   const hasSearches = searches.length > 0;
@@ -96,7 +48,13 @@ function JobInbox({ newJobs, setSelectedJob, isSearching }) {
       ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {newJobs.map(job => (
-                  <JobCard key={`new-${job.id}`} job={job} setSelectedJob={setSelectedJob} />
+                  // --- USE NEW CARD ---
+                  // We don't pass isSelected or onToggleSelect, so the checkbox won't show.
+                  <JobCard 
+                    key={`new-${job.id}`} 
+                    job={job} 
+                    setSelectedJob={setSelectedJob} 
+                  />
               ))}
           </div>
       )}
@@ -104,7 +62,7 @@ function JobInbox({ newJobs, setSelectedJob, isSearching }) {
   );
 }
 
-// --- TabButton Component (Unchanged) ---
+// --- TabButton Component ---
 function TabButton({ icon, label, isActive, onClick }) {
   const Icon = icon;
   return (
@@ -128,15 +86,13 @@ export default function Dashboard({ newJobs, setSelectedJob, onTriggerJobSearch,
     
     const [subView, setSubView] = useState('inbox'); // inbox | all | tracker
     
-    // --- THIS IS THE FIX ---
-    // We select each piece of state individually from the store.
+    // --- Get state for the new Profile Selector ---
     const allJobs = useStore((state) => state.allJobs);
     const updateJobStatus = useStore((state) => state.updateJobStatus);
     const openSearchModal = useStore((state) => state.openSearchModal);
     const profiles = useStore((state) => state.profiles);
     const activeProfileId = useStore((state) => state.activeProfileId);
     const setActiveProfileId = useStore((state) => state.setActiveProfileId);
-    // --- END OF FIX ---
 
     return (
         <div className="space-y-8">

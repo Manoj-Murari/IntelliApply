@@ -1,97 +1,19 @@
-import React, { useState, useMemo } from 'react'; // <-- Removed useEffect
+import React, { useState, useMemo } from 'react';
 import { useStore } from '../../lib/store';
-import { Archive, Filter, Linkedin, Briefcase, Trash2, Search, CheckSquare, Square } from 'lucide-react'; 
+import { Archive, Filter, Trash2, Search } from 'lucide-react'; 
+import JobCard from '../ui/JobCard'; // --- IMPORT NEW CARD ---
 
-// --- JobCard (Unchanged) ---
-function JobCard({ job, setSelectedJob, isSelected, onToggleSelect }) {
-  
-  const getPlatform = (url) => {
-    if (!url) return { name: 'Unknown', icon: Briefcase, color: 'bg-slate-100 text-slate-600' };
-    if (url.includes('linkedin')) {
-      return { name: 'LinkedIn', icon: Linkedin, color: 'bg-blue-100 text-blue-700' };
-    }
-    if (url.includes('indeed')) {
-      return { name: 'Indeed', icon: Briefcase, color: 'bg-sky-100 text-sky-700' };
-    }
-    if (url.includes('glassdoor')) {
-      return { name: 'Glassdoor', icon: Briefcase, color: 'bg-emerald-100 text-emerald-700' };
-    }
-    return { name: 'Other', icon: Briefcase, color: 'bg-slate-100 text-slate-600' };
-  };
-
-  const platform = getPlatform(job.job_url);
-  const PlatformIcon = platform.icon;
-  
-  const handleCardClick = () => {
-    setSelectedJob(job);
-  };
-
-  const handleCheckboxClick = (e) => {
-    e.stopPropagation(); 
-    onToggleSelect(job.id);
-  };
-  
-  return (
-    <div 
-      onClick={handleCardClick}
-      className={`relative bg-white p-4 rounded-lg border-2 transition-all ${
-          isSelected 
-            ? 'border-sky-500 shadow-md' 
-            : 'border-slate-200 hover:border-sky-500'
-      } cursor-pointer`}
-    >
-      <div 
-        onClick={handleCheckboxClick} 
-        className="absolute top-2 right-2 p-1 text-slate-400 hover:text-sky-600 z-10"
-        title="Select job"
-      >
-        {isSelected ? (
-          <CheckSquare className="w-5 h-5 text-sky-600" />
-        ) : (
-          <Square className="w-5 h-5" />
-        )}
-      </div>
-
-      <span className={`flex items-center gap-1.5 w-fit text-xs font-semibold px-2 py-1 rounded-full mb-2 ${platform.color}`}>
-        <PlatformIcon className="w-3 h-3" />
-        {platform.name}
-      </span>
-      <h3 className="font-bold text-lg text-slate-800 truncate">{job.title}</h3>
-      <p className="text-sm text-slate-600">{job.company}</p>
-      <div className="mt-4 flex gap-2">
-        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-          job.description 
-            ? 'bg-emerald-100 text-emerald-800' 
-            : 'bg-slate-100 text-slate-500'
-        }`}>
-          {job.description ? 'Description ✓' : 'No Description'}
-        </span>
-        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-          job.gemini_rating
-            ? 'bg-blue-100 text-blue-800'
-            : 'bg-slate-100 text-slate-500'
-        }`}>
-          AI: {job.gemini_rating ? `${job.gemini_rating}/10` : 'N/A'}
-        </span>
-      </div>
-    </div>
-  );
-}
-// --- END JobCard ---
+// --- JobCard component definition is REMOVED ---
 
 export default function AllJobs({ jobs, setSelectedJob }) {
     const [platformFilter, setPlatformFilter] = useState('all'); 
-
-    // --- THIS IS THE FIX ---
-    // We select each value from the store *individually*.
-    // This is the stable pattern for Zustand and prevents infinite loops.
+    
     const selectedJobIds = useStore(state => state.selectedJobIds);
     const toggleJobSelection = useStore(state => state.toggleJobSelection);
     const clearJobSelection = useStore(state => state.clearJobSelection);
     const openConfirmationModal = useStore(state => state.openConfirmationModal);
     const handleDeleteAllJobs = useStore(state => state.handleDeleteAllJobs);
     const handleDeleteSelectedJobs = useStore(state => state.handleDeleteSelectedJobs);
-    // --- END FIX ---
 
     const platformFilterOptions = [
         { value: 'all', label: 'All Platforms' },
@@ -107,7 +29,6 @@ export default function AllJobs({ jobs, setSelectedJob }) {
         return jobs.filter(job => job.job_url && job.job_url.includes(platformFilter));
     }, [jobs, platformFilter]);
 
-    // This logic is correct: call clearJobSelection when the filter changes
     const handleFilterChange = (e) => {
         setPlatformFilter(e.target.value);
         clearJobSelection(); 
@@ -176,6 +97,8 @@ export default function AllJobs({ jobs, setSelectedJob }) {
                 {filteredJobs.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {filteredJobs.map(job => (
+                            // --- USE NEW CARD ---
+                            // This time, we pass all props, so the checkbox will show.
                             <JobCard 
                                 key={job.id} 
                                 job={job} 

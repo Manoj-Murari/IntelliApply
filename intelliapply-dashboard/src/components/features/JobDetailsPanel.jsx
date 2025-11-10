@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { X, Building, Sparkles, ExternalLink, FileText, Users, Plus, Trash2, Briefcase, CheckSquare, Brain, Loader2, User } from 'lucide-react';
 import { useStore } from '../../lib/store';
 import { debounce } from 'lodash';
+import { ErrorBoundary } from '../ui/ErrorBoundary'; // --- IMPORT ---
 
 const useDebounce = (callback, delay) => {
     const debouncedFn = useCallback(debounce((...args) => callback(...args), delay), [delay]);
@@ -11,24 +12,7 @@ const useDebounce = (callback, delay) => {
     return debouncedFn;
 };
 
-class ErrorBoundary extends React.Component {
-    constructor(props) { super(props); this.state = { hasError: false }; }
-    static getDerivedStateFromError(error) { return { hasError: true }; }
-    componentDidCatch(error, errorInfo) { console.error("Error Boundary caught:", error, errorInfo); }
-    render() {
-        if (this.state.hasError) {
-            return (
-                <div className="p-6 text-center">
-                    <p className="text-red-500 font-semibold">Something went wrong.</p>
-                    <button onClick={() => this.setState({ hasError: false })} className="mt-2 px-4 py-2 bg-sky-100 text-sky-700 rounded-md">
-                        Try again
-                    </button>
-                </div>
-            );
-        }
-        return this.props.children;
-    }
-}
+// --- ErrorBoundary class definition is REMOVED ---
 
 function JobDetailsPanelContent({ job, setSelectedJob, onOpenTailorModal, onOpenCoverLetterModal, onOpenApplicationHelper, activeProfile }) {
     const [activeTab, setActiveTab] = useState('description');
@@ -57,19 +41,15 @@ function JobDetailsPanelContent({ job, setSelectedJob, onOpenTailorModal, onOpen
     }, [job?.id]);
 
     const onAnalyzeClick = async () => {
-        // --- NEW: Guard clause uses the activeProfile prop ---
         if (!activeProfile) {
             addNotification("Please select an active profile on the dashboard first.", "error");
             return;
         }
         setIsAnalyzing(true);
         try {
-            // Pass the active profile's ID
             await handleAnalyzeJob(job.id, activeProfile.id);
-            // We no longer set isAnalyzing(false) here.
-            // The Realtime update will re-render the panel, resetting the state.
         } catch (error) {
-            setIsAnalyzing(false); // Only set false on error
+            setIsAnalyzing(false);
         }
     };
 
@@ -131,7 +111,6 @@ function JobDetailsPanelContent({ job, setSelectedJob, onOpenTailorModal, onOpen
                 <span className="text-lg font-medium text-blue-600">/ 10</span>
             </div>
             <p className="mt-1 text-sm text-slate-700">{job.ai_reason}</p>
-            {/* NEW: Show which profile was used for the rating */}
             {job.profile_id && (
                 <div className="mt-3 pt-3 border-t border-blue-200 flex items-center gap-2 text-xs text-slate-500">
                     <User className="w-4 h-4" />
@@ -214,7 +193,6 @@ function JobDetailsPanelContent({ job, setSelectedJob, onOpenTailorModal, onOpen
                     <div className="p-3 bg-white border rounded-lg">
                         <h4 className="text-sm font-semibold text-slate-600 mb-3">AI Toolkit</h4>
                         
-                        {/* --- UPDATED: AI Toolkit now shows active profile --- */}
                         {activeProfile && (
                             <div className="mb-3 p-2 bg-slate-100 rounded-md flex items-center gap-2 text-xs text-slate-600">
                                 <User className="w-4 h-4" />
@@ -226,7 +204,7 @@ function JobDetailsPanelContent({ job, setSelectedJob, onOpenTailorModal, onOpen
                             {!job.gemini_rating && job.description && (
                                 <button 
                                     onClick={onAnalyzeClick}
-                                    disabled={isAnalyzing || !activeProfile} // <-- Disable if no active profile
+                                    disabled={isAnalyzing || !activeProfile} 
                                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-all disabled:bg-blue-400 disabled:cursor-not-allowed"
                                 >
                                     {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Brain className="w-5 h-5" />}

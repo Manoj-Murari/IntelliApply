@@ -1,50 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../lib/store';
-import { X, Sparkles, Lightbulb, Loader2 } from 'lucide-react';
+import { X, Sparkles, Lightbulb } from 'lucide-react';
+import AILoader from '../ui/AILoader'; // --- IMPORT ---
+import PasteDescription from '../ui/PasteDescription'; // --- IMPORT ---
 
-function AILoader() {
-    return (
-        <div className="text-center p-8">
-            <Loader2 className="w-12 h-12 text-sky-500 mx-auto animate-spin" />
-            <p className="mt-4 font-semibold text-slate-600">Your AI Career Coach is analyzing the data...</p>
-            <p className="text-sm text-slate-500">This may take a moment.</p>
-        </div>
-    );
-}
-
-function PasteDescription({ onGenerate }) {
-    const [pastedDesc, setPastedDesc] = useState('');
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (pastedDesc.trim()) onGenerate(pastedDesc);
-    };
-    return (
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
-            <h3 className="font-semibold text-slate-700">No Description Found</h3>
-            <p className="text-sm text-slate-500">
-                This job was saved without a description. Please paste the
-                job description below to get AI suggestions.
-            </p>
-            <textarea
-                value={pastedDesc}
-                onChange={(e) => setPastedDesc(e.target.value)}
-                placeholder="Paste the full job description here..."
-                className="w-full h-48 p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-sky-500"
-                required
-            />
-            <button
-                type="submit"
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-sky-600 rounded-md hover:bg-sky-700 transition-all"
-            >
-                <Sparkles className="w-5 h-5" />
-                Generate Suggestions
-            </button>
-        </form>
-    );
-}
+// --- AILoader component definition is REMOVED ---
+// --- PasteDescription component definition is REMOVED ---
 
 export default function AITailoringModal({ isOpen, onClose, job, profile }) {
-    // --- FIX: Select state individually ---
     const isGenerating = useStore(state => state.isGenerating);
     const tailoringSuggestions = useStore(state => state.tailoringSuggestions);
     const aiError = useStore(state => state.aiError);
@@ -84,7 +47,7 @@ export default function AITailoringModal({ isOpen, onClose, job, profile }) {
                         <p><span className="font-semibold">Using Profile:</span> {profile?.profile_name || 'N/A'}</p>
                     </div>
                     {isGenerating ? (
-                        <AILoader />
+                        <AILoader text="Your AI Career Coach is analyzing the data..." />
                     ) : aiError ? (
                         <p className="text-center text-red-500 p-8">{aiError}</p>
                     ) : tailoringSuggestions.length > 0 ? (
@@ -103,7 +66,7 @@ export default function AITailoringModal({ isOpen, onClose, job, profile }) {
                                 <p className="text-slate-600">Click the button below to get personalized suggestions.</p>
                             </div>
                         ) : (
-                            <PasteDescription onGenerate={onGenerate} />
+                            <PasteDescription onGenerate={onGenerate} buttonText="Generate Suggestions" />
                         )
                     )}
                 </div>
