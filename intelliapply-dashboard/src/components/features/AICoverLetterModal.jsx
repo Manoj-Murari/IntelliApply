@@ -1,0 +1,132 @@
+import React, { useState, useEffect } from 'react';
+import { useStore } from '../../lib/store';
+import { X, Sparkles, Clipboard, Check, Loader2 } from 'lucide-react';
+
+function AILoader() {
+    return (
+        <div className="text-center p-8">
+            <Loader2 className="w-12 h-12 text-sky-500 mx-auto animate-spin" />
+            <p className="mt-4 font-semibold text-slate-600">Your AI co-pilot is writing the first draft...</p>
+            <p className="text-sm text-slate-500">This may take a moment.</p>
+        </div>
+    );
+}
+
+function PasteDescription({ onGenerate }) {
+    const [pastedDesc, setPastedDesc] = useState('');
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (pastedDesc.trim()) onGenerate(pastedDesc);
+    };
+    return (
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+            <h3 className="font-semibold text-slate-700">No Description Found</h3>
+            <p className="text-sm text-slate-500">
+                This job was saved without a description. Please paste the
+                job description below to generate a cover letter.
+            </p>
+            <textarea
+                value={pastedDesc}
+                onChange={(e) => setPastedDesc(e.target.value)}
+                placeholder="Paste the full job description here..."
+                className="w-full h-48 p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-sky-500"
+                required
+            />
+            <button
+                type="submit"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-sky-600 rounded-md hover:bg-sky-700 transition-all"
+            >
+                <Sparkles className="w-5 h-5" />
+                Generate Cover Letter
+            </button>
+        </form>
+    );
+}
+
+export default function AICoverLetterModal({ isOpen, onClose, job, profile }) {
+    // --- FIX: Select state individually ---
+    const isGenerating = useStore(state => state.isGenerating);
+    const coverLetter = useStore(state => state.coverLetter);
+    const aiError = useStore(state => state.aiError);
+    const handleGetCoverLetter = useStore(state => state.handleGetCoverLetter);
+
+    const [description, setDescription] = useState('');
+    const [hasCopied, setHasCopied] = useState(false);
+
+    useEffect(() => {
+        if (isOpen && job) setDescription(job.description || '');
+    }, [isOpen, job]);
+
+    const onGenerate = (descToUse) => {
+        if (!profile || !job) {
+            useStore.getState().addNotification("Job or Profile missing.", "error");
+            return;
+        }
+        setDescription(descToUse);
+        handleGetCoverLetter(job, profile.id, descToUse);
+    };
+
+    const handleCopyToClipboard = () => {
+        navigator.clipboard.writeText(coverLetter);
+        setHasCopied(true);
+        setTimeout(() => setHasCopied(false), 2000);
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+                <div className="flex items-center justify-between p-4 border-b border-slate-200">
+                    <div className="flex items-center gap-3">
+                        <Sparkles className="w-6 h-6 text-sky-500" />
+                        <h2 className="text-xl font-bold text-slate-800">AI Cover Letter Generator</h2>
+                    </div>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100"><X className="w-5 h-5 text-slate-600" /></button>
+                </div>
+
+                <div className="p-6 overflow-y-auto">
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6">
+                        <p><span className="font-semibold">Target Job:</span> {job?.title || 'N/A'}</p>
+                        <p><span className="font-semibold">Using Profile:</span> {profile?.profile_name || 'N/A'}</p>
+                    </div>
+                    {isGenerating ? (
+                        <AILoader />
+                    ) : aiError ? (
+                        <p className="text-center text-red-500 p-8">{aiError}</p>
+                    ) : coverLetter ? (
+                        <div className="bg-slate-100 p-4 rounded-md border prose prose-slate max-w-none">
+                            <p style={{ whiteSpace: 'pre-wrap' }}>{coverLetter}</p>
+                        </div>
+                    ) : (
+                        description ? (
+                            <div className="text-center p-8">
+                                <p className="text-slate-600">Click the button below to generate a tailored first draft.</p>
+                            </div>
+                        ) : (
+                            <PasteDescription onGenerate={onGenerate} />
+                        )
+                    )}
+                </div>
+
+                <div className="p-4 border-t border-slate-200 bg-slate-50/50 flex justify-end gap-4">
+                    {coverLetter && (
+                         <button onClick={handleCopyToClipboard} className="flex items-center justify-center gap-2 px-4 py-2 font-semibold text-emerald-700 bg-emerald-100 rounded-md hover:bg-emerald-200 transition-all">
+                             {hasCopied ? <><Check className="w-5 h-5" /> Copied!</> : <><Clipboard className="w-5 h-5" /> Copy to Clipboard</>}
+                         </button>
+                    )}
+                    {(description && !isGenerating && !aiError) && (
+                        <button
+                            onClick={() => onGenerate(description)}
+                            disabled={isGenerating}
+                            className="flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-sky-600 rounded-md hover:bg-sky-700 transition-all disabled:bg-sky-400 disabled:cursor-not-allowed"
+                        >
+                            <Sparkles className="w-5 h-5" />
+                            {isGenerating ? 'Generating...' : (coverLetter ? 'Regenerate' : 'Generate Cover Letter')}
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
