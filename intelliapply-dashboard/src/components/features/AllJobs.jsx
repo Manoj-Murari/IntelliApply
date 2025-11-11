@@ -1,19 +1,29 @@
 import React, { useState, useMemo } from 'react';
 import { useStore } from '../../lib/store';
-import { Archive, Filter, Trash2, Search } from 'lucide-react'; 
-import JobCard from '../ui/JobCard'; // --- IMPORT NEW CARD ---
-
-// --- JobCard component definition is REMOVED ---
+import { 
+    Archive, Filter, Trash2, Search, SortAsc, ChevronDown, 
+    Brain, Plus, X, CheckSquare 
+} from 'lucide-react'; 
+import JobCard from '../ui/JobCard';
 
 export default function AllJobs({ jobs, setSelectedJob }) {
+    // --- State for filters, sorting, and NEW local search ---
     const [platformFilter, setPlatformFilter] = useState('all'); 
-    
+    const [sortOrder, setSortOrder] = useState('date_newest');
+    const [isMenuOpen, setIsMenuOpen] = useState(false); // For delete dropdown
+    const [searchQuery, setSearchQuery] = useState(''); // <-- NEW: Local search query
+    const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false); // <-- NEW
+
+    // Selectors from the store
     const selectedJobIds = useStore(state => state.selectedJobIds);
     const toggleJobSelection = useStore(state => state.toggleJobSelection);
     const clearJobSelection = useStore(state => state.clearJobSelection);
     const openConfirmationModal = useStore(state => state.openConfirmationModal);
     const handleDeleteAllJobs = useStore(state => state.handleDeleteAllJobs);
     const handleDeleteSelectedJobs = useStore(state => state.handleDeleteSelectedJobs);
+    const handleBulkAnalyze = useStore((state) => state.handleBulkAnalyze);
+    const activeProfileId = useStore((state) => state.activeProfileId);
+    const openAddJobModal = useStore((state) => state.openAddJobModal);
 
     const platformFilterOptions = [
         { value: 'all', label: 'All Platforms' },
@@ -21,20 +31,54 @@ export default function AllJobs({ jobs, setSelectedJob }) {
         { value: 'indeed', label: 'Indeed' },
         { value: 'glassdoor', label: 'Glassdoor' },
     ];
+    
+    const sortOptions = [
+        { value: 'date_newest', label: 'Date (Newest First)' },
+        { value: 'title_az', label: 'Title (A-Z)' },
+    ];
 
-    const filteredJobs = useMemo(() => {
-        if (platformFilter === 'all') {
-            return jobs;
+    const filteredAndSortedJobs = useMemo(() => {
+        let processedJobs = [...jobs];
+
+        // --- KEY FILTER: Only show tracked jobs ---
+        processedJobs = processedJobs.filter(job => job.is_tracked);
+
+        // 1. Filter by local Search Query
+        if (searchQuery) {
+            processedJobs = processedJobs.filter(job => 
+                job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                job.company.toLowerCase().includes(searchQuery.toLowerCase())
+            );
         }
-        return jobs.filter(job => job.job_url && job.job_url.includes(platformFilter));
-    }, [jobs, platformFilter]);
+
+        // 2. Filter by platform
+        if (platformFilter !== 'all') {
+            processedJobs = processedJobs.filter(job => job.job_url && job.job_url.includes(platformFilter));
+        }
+
+        // 3. Sort
+        if (sortOrder === 'title_az') {
+            processedJobs.sort((a, b) => a.title.localeCompare(b.title));
+        } else {
+            processedJobs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        }
+
+        return processedJobs;
+    }, [jobs, platformFilter, sortOrder, searchQuery]); // 'jobs' is allJobs
+    
+    const jobsToAnalyzeCount = filteredAndSortedJobs.filter(j => !j.gemini_rating && j.description).length;
 
     const handleFilterChange = (e) => {
         setPlatformFilter(e.target.value);
         clearJobSelection(); 
     };
+    
+    const handleSortChange = (e) => {
+        setSortOrder(e.target.value);
+    };
 
     const onDeleteAllClick = () => {
+        setIsMenuOpen(false);
         openConfirmationModal(
             "Delete All Jobs",
             "This will permanently delete all jobs that are NOT on your tracker. Are you sure?",
@@ -43,6 +87,7 @@ export default function AllJobs({ jobs, setSelectedJob }) {
     };
 
     const onDeleteSelectedClick = () => {
+        setIsMenuOpen(false);
         if (selectedJobIds.size === 0) {
             useStore.getState().addNotification("No jobs selected.", "warning");
             return;
@@ -53,52 +98,138 @@ export default function AllJobs({ jobs, setSelectedJob }) {
             () => handleDeleteSelectedJobs()
         );
     };
+    
+    // --- NEW: Select All Handler ---
+    const handleSelectAll = () => {
+        filteredAndSortedJobs.forEach(job => {
+            if (!selectedJobIds.has(job.id)) {
+                toggleJobSelection(job.id);
+            }
+        });
+    };
 
     return (
         <div>
+            {/* --- UPDATED: Context-Aware Header --- */}
             <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-3">
-                    <Archive className="w-7 h-7" />
-                    <h2 className="text-2xl font-bold">Job Library</h2>
-                </div>
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                        <Filter className="w-4 h-4 text-slate-500" />
-                        <select
-                            value={platformFilter}
-                            onChange={handleFilterChange} 
-                            className="bg-white border border-slate-300 rounded-md px-3 py-1.5 text-sm font-medium"
-                        >
-                            {platformFilterOptions.map(option => (
-                                <option key={option.value} value={option.value}>{option.label}</option>
-                            ))}
-                        </select>
-                    </div>
-                    
-                    <button
-                        onClick={onDeleteSelectedClick}
-                        disabled={selectedJobIds.size === 0}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-red-600 bg-white border border-red-200 rounded-md hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        <Trash2 className="w-4 h-4" />
-                        Delete Selected ({selectedJobIds.size})
-                    </button>
-                    <button
-                        onClick={onDeleteAllClick}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-red-600 bg-red-100 rounded-md hover:bg-red-200 transition-colors"
-                    >
-                        <Trash2 className="w-4 h-4" />
-                        Delete All
-                    </button>
-                </div>
+                {selectedJobIds.size === 0 ? (
+                    // --- DEFAULT HEADER ---
+                    <>
+                        {/* --- LEFT SIDE: Big Search Bar --- */}
+                        <div className="flex-1 max-w-2xl">
+                            <div className="relative">
+                                <span className="absolute inset-y-0 left-0 flex items-center pl-4">
+                                    <Search className="w-5 h-5 text-slate-400" />
+                                </span>
+                                <input
+                                    type="text"
+                                    placeholder="Search your saved jobs..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full bg-white border border-slate-300 rounded-lg pl-12 pr-4 py-2.5 text-sm shadow-sm"
+                                />
+                            </div>
+                        </div>
+                        
+                        {/* --- RIGHT SIDE: Filters & Actions --- */}
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                            <div className="relative">
+                                <button
+                                    onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
+                                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 transition-colors"
+                                >
+                                    <Filter className="w-4 h-4" />
+                                    Filter & Sort
+                                </button>
+                                {isFilterMenuOpen && (
+                                    <div 
+                                        className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg border border-slate-200 z-10"
+                                        onMouseLeave={() => setIsFilterMenuOpen(false)}
+                                    >
+                                        <div className="p-3 space-y-3">
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-500 mb-1">Sort by</label>
+                                                <select
+                                                    value={sortOrder}
+                                                    onChange={handleSortChange} 
+                                                    className="w-full bg-white border border-slate-300 rounded-md px-3 py-1.5 text-sm font-medium"
+                                                >
+                                                    {sortOptions.map(option => (
+                                                        <option key={option.value} value={option.value}>{option.label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-500 mb-1">Platform</label>
+                                                <select
+                                                    value={platformFilter}
+                                                    onChange={handleFilterChange} 
+                                                    className="w-full bg-white border border-slate-300 rounded-md px-3 py-1.5 text-sm font-medium"
+                                                >
+                                                    {platformFilterOptions.map(option => (
+                                                        <option key={option.value} value={option.value}>{option.label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <button
+                                onClick={() => handleBulkAnalyze(filteredAndSortedJobs)}
+                                disabled={!activeProfileId || jobsToAnalyzeCount === 0}
+                                className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-blue-700 bg-blue-100 border border-blue-200 rounded-md hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <Brain className="w-4 h-4" />
+                                Analyze ({jobsToAnalyzeCount})
+                            </button>
+
+                            {/* --- "New Job" Button --- */}
+                            <button
+                                onClick={openAddJobModal}
+                                className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-white bg-sky-600 rounded-md hover:bg-sky-700 transition-colors"
+                            >
+                                <Plus className="w-4 h-4" />
+                                New Job
+                            </button>
+                        </div>
+                    </>
+                ) : (
+                    // --- SELECTION HEADER ---
+                    <>
+                        <div className="flex items-center gap-3">
+                            <button onClick={clearJobSelection} className="p-2 rounded-full hover:bg-slate-100">
+                                <X className="w-5 h-5 text-slate-600" />
+                            </button>
+                            <h2 className="text-xl font-bold text-sky-700">{selectedJobIds.size} Selected</h2>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <button
+                                onClick={handleSelectAll}
+                                className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 transition-colors"
+                            >
+                                <CheckSquare className="w-4 h-4" />
+                                Select All
+                            </button>
+                            <button
+                                onClick={onDeleteSelectedClick}
+                                className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                Delete ({selectedJobIds.size})
+                            </button>
+                        </div>
+                    </>
+                )}
             </div>
+            {/* --- END: Context-Aware Header --- */}
+
 
             <div className="bg-white/50 border border-slate-200 rounded-lg p-4 min-h-[400px]">
-                {filteredJobs.length > 0 ? (
+                {filteredAndSortedJobs.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredJobs.map(job => (
-                            // --- USE NEW CARD ---
-                            // This time, we pass all props, so the checkbox will show.
+                        {filteredAndSortedJobs.map(job => (
                             <JobCard 
                                 key={job.id} 
                                 job={job} 
@@ -111,8 +242,8 @@ export default function AllJobs({ jobs, setSelectedJob }) {
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full text-center text-slate-500 py-10">
                         <Search className="w-16 h-16 mb-4 text-slate-400" /> 
-                        <h3 className="text-lg font-semibold">No jobs found for this filter</h3>
-                        <p>Try selecting a different platform or find new jobs from the dashboard.</p>
+                        <h3 className="text-lg font-semibold">No "Saved" Jobs Found</h3>
+                        <p>Go to the Inbox and click "Add to Tracker" on any job to save it here.</p>
                     </div>
                 )}
             </div>

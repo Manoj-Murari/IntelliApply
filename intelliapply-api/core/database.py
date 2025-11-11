@@ -5,60 +5,81 @@ from datetime import datetime
 
 log = logging.getLogger(__name__)
 
-def save_job_to_db(job_data: dict, user_id: str, search_id: str): # <-- NEW ARGS
+def batch_save_jobs(jobs_list: list[dict], user_id: str, search_id: str) -> int:
     """
-    Saves a single processed job to the Supabase database.
+    Saves a list of jobs in a single batch insert.
     
     FIX:
-    - Now requires user_id and search_id to stamp the job.
-    - De-duplicates based on 'user_id', 'title', AND 'company'.
+    - Fetches all existing jobs for the user ONCE to check for duplicates.
+    - Inserts all new jobs in a SINGLE batch request.
+    - This is much, much faster and avoids network timeouts.
     """
+    log.info(f"Batch saving {len(jobs_list)} jobs for user {user_id}...")
+    
+    # 1. Get all existing job titles/companies for this user ONCE.
     try:
-        job_title = job_data.get('title')
-        job_company = job_data.get('company')
-        job_url = job_data.get('job_url')
-
-        if not job_title or not job_company:
-            log.warning("Skipped save. Job is missing a title or company.")
-            return
-
-        # --- THIS IS THE NEW DUPLICATE CHECK ---
-        # Check if a job with the same user, title, AND company already exists
-        result = supabase.table('jobs').select('id') \
-            .eq('user_id', user_id) \
-            .ilike('title', job_title) \
-            .ilike('company', job_company) \
+        existing_jobs_res = supabase.table("jobs") \
+            .select("title, company") \
+            .eq("user_id", user_id) \
             .execute()
         
-        if result.data:
-            log.info(f"Skipped save. Job '{job_title}' at '{job_company}' already exists for user.")
-            return
-        # --- END NEW CHECK ---
+        if hasattr(existing_jobs_res, 'error') and existing_jobs_res.error:
+            raise Exception(str(existing_jobs_res.error))
 
-        if not job_url:
-            log.warning(f"Skipped save. Job '{job_title}' has no URL.")
-            return
+        # Create a set of (title, company) tuples for fast lookup
+        existing_job_set = set(
+            (job['title'].lower(), job['company'].lower()) for job in existing_jobs_res.data
+        )
+        log.info(f"Found {len(existing_job_set)} existing jobs for user's duplicate check.")
 
-        # We explicitly build our object to include user_id and search_id
-        job_to_save = {
+    except Exception as e:
+        log.error(f"Failed to fetch existing jobs for dupe check: {e}")
+        raise e # Fail the whole job if we can't check for dupes
+
+    # 2. Filter out duplicates in memory
+    jobs_to_save = []
+    skipped_count = 0
+    for job in jobs_list:
+        job_title = job.get('title')
+        job_company = job.get('company')
+        job_url = job.get('job_url')
+
+        if not job_title or not job_company or not job_url:
+            skipped_count += 1
+            continue # Skip jobs with missing core data
+
+        # Check against our set
+        if (job_title.lower(), job_company.lower()) in existing_job_set:
+            skipped_count += 1
+            continue # Skip duplicate
+
+        # Add to our batch
+        jobs_to_save.append({
             "title": job_title,
             "company": job_company,
             "job_url": str(job_url),
-            "description": job_data.get("description"),
-            "location": job_data.get("location"),
-            "created_at": datetime.now().isoformat(),
-            "status": "Applied", # Default status
-            "gemini_rating": None,
-            "ai_reason": None,
-            "user_id": user_id,       # <-- NEW
-            "search_id": search_id,   # <-- NEW
-            "is_tracked": False       # <-- NEW (Default to not tracked)
-        }
-
-        log.info(f"Saving new RAW job '{job_to_save['title']}' to database for user {user_id}...")
-        supabase.table('jobs').insert(job_to_save).execute()
-        log.info("Raw save successful.")
+            "description": job.get("description"),
+            "location": job.get("location"),
+            "created_at": job.get('created_at', datetime.now().isoformat()),
+            "status": "Applied",
+            "user_id": user_id,
+            "search_id": search_id,
+            "is_tracked": False
+        })
         
-    except Exception as e:
-        log.error(f"DB save error: {e}")
-        raise e
+        # Add to set to prevent duplicate *within this same batch*
+        existing_job_set.add((job_title.lower(), job_company.lower()))
+
+    # 3. Perform one single batch insert
+    if jobs_to_save:
+        log.info(f"Saving {len(jobs_to_save)} new jobs to database. Skipping {skipped_count}.")
+        insert_response = supabase.table("jobs").insert(jobs_to_save).execute()
+        
+        if hasattr(insert_response, 'error') and insert_response.error:
+            log.error(f"Batch insert failed: {insert_response.error}")
+            raise Exception(str(insert_response.error))
+        
+        return len(jobs_to_save)
+    else:
+        log.info(f"No new jobs to save. Skipping {skipped_count}.")
+        return 0

@@ -27,16 +27,18 @@ function TabButton({ icon, label, isActive, onClick }) {
 export default function Settings() {
   const [subView, setSubView] = useState('profiles'); // profiles | searches
 
-  // Get all the props needed for the child components from the store
-  const {
-    profiles,
-    searches,
-    handleSaveProfile,
-    handleDeleteProfile,
-    handleSaveSearch,
-    handleDeleteSearch,
-    openConfirmationModal,
-  } = useStore();
+  // --- THIS IS THE FIX ---
+  // We select each piece of state individually to prevent infinite re-renders.
+  const profiles = useStore((state) => state.profiles);
+  const searches = useStore((state) => state.searches);
+  const loading = useStore((state) => state.loading);
+  const handleSaveProfile = useStore((state) => state.handleSaveProfile);
+  const handleDeleteProfile = useStore((state) => state.handleDeleteProfile);
+  const handleRemoveResume = useStore((state) => state.handleRemoveResume);
+  const handleSaveSearch = useStore((state) => state.handleSaveSearch);
+  const handleDeleteSearch = useStore((state) => state.handleDeleteSearch);
+  const openConfirmationModal = useStore((state) => state.openConfirmationModal);
+  // --- END OF FIX ---
 
   return (
     <div className="space-y-6">
@@ -66,7 +68,9 @@ export default function Settings() {
         {subView === 'profiles' && (
           <Profiles
             profiles={profiles}
+            loading={loading}
             onSave={handleSaveProfile}
+            onRemoveResume={handleRemoveResume}
             onDeleteRequest={(id) =>
               openConfirmationModal(
                 'Delete Profile',
@@ -80,7 +84,6 @@ export default function Settings() {
         {subView === 'searches' && (
           <Searches
             searches={searches}
-            profiles={profiles}
             onSave={handleSaveSearch}
             onDeleteRequest={(id) =>
               openConfirmationModal(

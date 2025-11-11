@@ -1,19 +1,20 @@
 import React, { useState } from 'react';
 import { Plus, Edit, Trash2, Link2, BarChartHorizontal, Clock } from 'lucide-react';
-import SearchForm from './SearchForm'; // <-- NEW IMPORT
+import SearchForm from './SearchForm'; 
+// --- NO MORE useStore import ---
 
 // This is the main component for the "Searches" tab
-export default function Searches({ searches, profiles, onSave, onDeleteRequest }) {
+export default function Searches({ searches, onSave, onDeleteRequest }) {
     const [editingSearch, setEditingSearch] = useState(null);
+    // --- NO MORE useStore calls ---
 
-    // We no longer need the profileMap
     const experienceLevelLabels = { 'entry_level': 'Entry Level', 'mid_level': 'Mid Level', 'senior_level': 'Senior Level', 'executive': 'Executive' };
-    const datePostedLabels = { 24: 'Last 24h', 72: 'Last 3d', 168: 'Last 7d', 720: 'Last 30d' };
+    const datePostedLabels = { 24: 'Last 24h', 48: 'Last 48h', 72: 'Last 3d', 168: 'Last 7d', 336: 'Last 2w', 720: 'Last 30d' };
 
     if (editingSearch) {
         return <SearchForm 
             search={editingSearch} 
-            profiles={profiles} // We pass this but the form ignores it
+            // profiles prop is no longer needed
             onSave={(s) => { onSave(s); setEditingSearch(null); }} 
             onCancel={() => setEditingSearch(null)} 
         />;
@@ -28,7 +29,12 @@ export default function Searches({ searches, profiles, onSave, onDeleteRequest }
                 </button>
             </div>
             <div className="grid grid-cols-1 gap-4">
-                {searches.length === 0 && <p className="text-slate-500">You haven't created any searches yet.</p>}
+                {searches.length === 0 && (
+                    <div className="text-center py-12 bg-white border-2 border-dashed rounded-lg">
+                        <h3 className="text-lg font-medium text-slate-800">No Searches Found</h3>
+                        <p className="text-slate-500 mt-1">Click "New Search" to get started.</p>
+                    </div>
+                )}
                 {searches.map(search => (
                     <div key={search.id} className="bg-white p-4 rounded-lg border border-slate-200">
                         <div className="flex justify-between items-start">
@@ -36,12 +42,6 @@ export default function Searches({ searches, profiles, onSave, onDeleteRequest }
                                 <h3 className="font-bold text-lg">{search.search_name}</h3>
                                 <p className="text-sm text-slate-600">Term: "{search.search_term}" | Country: {search.country || 'Any'}</p>
                                 <div className="flex items-center flex-wrap gap-4 mt-2">
-                                    {/* This is no longer relevant
-                                    <div className="flex items-center gap-2 text-xs text-sky-700 font-semibold bg-sky-100 px-2 py-1 rounded-full w-fit">
-                                        <Link2 className="w-3 h-3" />
-                                        <span>Profile: {profileMap.get(search.profile_id) || 'None'}</span>
-                                    </div>
-                                    */}
                                      <div className="flex items-center gap-2 text-xs text-purple-700 font-semibold bg-purple-100 px-2 py-1 rounded-full w-fit">
                                         <BarChartHorizontal className="w-3 h-3" />
                                         <span>Exp: {experienceLevelLabels[search.experience_level] || 'Any'}</span>

@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
     Briefcase, 
-    LayoutDashboard, 
     Settings, 
     BarChart3, 
     Loader2,
     LogOut,
-    User
+    User,
+    Inbox,
+    Archive
 } from 'lucide-react';
 import { useStore } from '../../lib/store';
 import { supabase } from '../../lib/supabaseClient';
 
-// --- Reusable NavLink (Unchanged) ---
+// --- Reusable NavLink ---
 function NavLink({ view, setView, currentView, viewName, children }) {
     const isActive = currentView === viewName;
     return (
@@ -28,14 +29,13 @@ function NavLink({ view, setView, currentView, viewName, children }) {
     );
 }
 
-// --- NEW: Reusable Avatar Component ---
+// --- Avatar Component (Unchanged) ---
 function Avatar({ email }) {
     const getInitials = (email) => {
         return email ? email[0].toUpperCase() : <User className="w-4 h-4" />;
     };
 
     const getColor = (email) => {
-        // Simple hash function for a consistent color
         let hash = 0;
         if (!email) return 'bg-slate-500';
         for (let i = 0; i < email.length; i++) {
@@ -53,13 +53,14 @@ function Avatar({ email }) {
 }
 
 export default function Header() {
-    // --- THIS IS THE FIX ---
-    // We select each piece of state individually to prevent infinite loops.
+    // --- Get state from the store individually ---
     const view = useStore((state) => state.view);
     const setView = useStore((state) => state.setView);
     const isSearching = useStore((state) => state.isSearching);
     const handleSignOut = useStore((state) => state.handleSignOut);
-    // --- END FIX ---
+    const profiles = useStore((state) => state.profiles);
+    const activeProfileId = useStore((state) => state.activeProfileId);
+    const setActiveProfileId = useStore((state) => state.setActiveProfileId);
 
     // --- State for user and dropdown ---
     const [userEmail, setUserEmail] = useState('');
@@ -88,28 +89,56 @@ export default function Header() {
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
         };
-    }, [dropdownRef]); // This dependency is fine as refs are stable
+    }, [dropdownRef]); 
 
     return (
         <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200 sticky top-0 z-40">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
+                    
+                    {/* --- LEFT SIDE (LOGO ONLY) --- */}
                     <div className="flex items-center gap-6">
                         <div className="flex items-center gap-2">
                             <Briefcase className="w-7 h-7 text-sky-600" />
                             <h1 className="text-xl font-bold text-slate-800">IntelliApply</h1>
                         </div>
-                        
-                        {/* --- UPDATED NAVIGATION --- */}
-                        <nav className="hidden md:flex items-center gap-2">
-                            <NavLink view={view} setView={setView} currentView={view} viewName="dashboard"><LayoutDashboard className="w-4 h-4" />Dashboard</NavLink>
-                            <NavLink view={view} setView={setView} currentView={view} viewName="analytics"><BarChart3 className="w-4 h-4" />Analytics</NavLink>
-                        </nav>
+                        {/* --- Navigation has been moved --- */}
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    {/* --- RIGHT SIDE (NAV + ACTIONS) --- */}
+                    <div className="flex items-center gap-6"> {/* <-- Increased gap */}
+                        
+                        {/* --- NAVIGATION (MOVED HERE) --- */}
+                        <nav className="hidden md:flex items-center gap-2">
+                            <NavLink view={view} setView={setView} currentView={view} viewName="inbox"><Inbox className="w-4 h-4" />Inbox</NavLink>
+                            <NavLink view={view} setView={setView} currentView={view} viewName="library"><Archive className="w-4 h-4" />Job Library</NavLink>
+                            <NavLink view={view} setView={setView} currentView={view} viewName="tracker"><Briefcase className="w-4 h-4" />Tracker</NavLink>
+                            <NavLink view={view} setView={setView} currentView={view} viewName="analytics"><BarChart3 className="w-4 h-4" />Analytics</NavLink>
+                        </nav>
+                        {/* --- END NAVIGATION --- */}
+
+                        {/* --- Global Profile Selector --- */}
+                        {profiles.length > 0 && (
+                            <div className="flex items-center gap-2">
+                                <User className="w-4 h-4 text-slate-500" />
+                                <select
+                                    id="global-active-profile"
+                                    value={activeProfileId || ''}
+                                    onChange={(e) => setActiveProfileId(e.target.value)}
+                                    className="text-sm font-medium text-slate-700 bg-transparent border-0 rounded-md focus:ring-0 focus:outline-none"
+                                    title="Set active AI profile"
+                                >
+                                    {profiles.map(profile => (
+                                        <option key={profile.id} value={profile.id}>
+                                            {profile.profile_name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
                         {isSearching && (
-                            <div className="flex items-center gap-2 text-sm font-semibold text-sky-600 mr-4">
+                            <div className="flex items-center gap-2 text-sm font-semibold text-sky-600">
                                 <Loader2 className="w-4 h-4 animate-spin" />
                                 <span>Searching...</span>
                             </div>

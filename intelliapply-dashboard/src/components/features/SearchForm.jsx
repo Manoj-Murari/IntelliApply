@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 export default function SearchForm({ search, profiles, onSave, onCancel }) {
     const [formData, setFormData] = useState({ 
         ...search, 
-        // profile_id: search.profile_id || '', // <-- This is now obsolete
         experience_level: search.experience_level || 'entry_level',
         hours_old: search.hours_old || 24 
     });
@@ -17,7 +16,6 @@ export default function SearchForm({ search, profiles, onSave, onCancel }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        // We no longer pass profile_id from the form
         const dataToSave = { ...formData, profile_id: null }; 
         onSave(dataToSave);
     };
@@ -29,10 +27,13 @@ export default function SearchForm({ search, profiles, onSave, onCancel }) {
         { value: 'executive', label: 'Executive' },
     ];
     
+    // --- UPDATED: More granular date options ---
     const datePostedOptions = [
         { value: 24, label: 'Last 24 hours' },
+        { value: 48, label: 'Last 48 hours' },
         { value: 72, label: 'Last 3 days' },
         { value: 168, label: 'Last 7 days' },
+        { value: 336, label: 'Last 2 weeks' },
         { value: 720, label: 'Last 30 days' },
     ];
 
@@ -67,11 +68,9 @@ export default function SearchForm({ search, profiles, onSave, onCancel }) {
             <div className="mb-6">
                 <label htmlFor="hours_old" className="block text-sm font-medium text-slate-700 mb-1">Date Posted</label>
                 <select id="hours_old" name="hours_old" value={formData.hours_old} onChange={handleChange} className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white">
-                    {datePostedOptions.map(option => ( <option key={option.value} value={option.value}>{option.label}</option> ))}
+                    {datePostedOptions.map(option => ( <option key={option.value} value={option.value}>{option.label}</option>))}
                 </select>
             </div>
-            
-            {/* The "Link to Profile" dropdown is now gone */}
             
             <div className="flex justify-end gap-4">
                 <button type="button" onClick={onCancel} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-md font-semibold">Cancel</button>

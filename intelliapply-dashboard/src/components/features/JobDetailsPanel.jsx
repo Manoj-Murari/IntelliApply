@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Building, Sparkles, ExternalLink, FileText, Users, Plus, Trash2, Briefcase, CheckSquare, Brain, Loader2, User } from 'lucide-react';
+import { 
+    X, Building, Sparkles, ExternalLink, FileText, Users, Plus, 
+    Trash2, Briefcase, CheckSquare, Brain, Loader2, User, Save, Pencil, FilePen // <-- NEW IMPORT
+} from 'lucide-react';
 import { useStore } from '../../lib/store';
 import { debounce } from 'lodash';
-import { ErrorBoundary } from '../ui/ErrorBoundary'; // --- IMPORT ---
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 
 const useDebounce = (callback, delay) => {
     const debouncedFn = useCallback(debounce((...args) => callback(...args), delay), [delay]);
@@ -12,14 +15,23 @@ const useDebounce = (callback, delay) => {
     return debouncedFn;
 };
 
-// --- ErrorBoundary class definition is REMOVED ---
-
-function JobDetailsPanelContent({ job, setSelectedJob, onOpenTailorModal, onOpenCoverLetterModal, onOpenApplicationHelper, activeProfile }) {
+// --- UPDATED to accept onOpenOptimizedResumeModal ---
+function JobDetailsPanelContent({ 
+    job, 
+    setSelectedJob, 
+    onOpenTailorModal, 
+    onOpenCoverLetterModal, 
+    onOpenApplicationHelper, 
+    onOpenOptimizedResumeModal, // <-- NEW
+    activeProfile 
+}) {
     const [activeTab, setActiveTab] = useState('description');
     const [notes, setNotes] = useState('');
     const [contacts, setContacts] = useState([]);
     const [newContact, setNewContact] = useState({ name: '', title: '', contact_info: '' });
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [localDescription, setLocalDescription] = useState('');
+    const [isEditingDescription, setIsEditingDescription] = useState(false);
 
     const updateJobDetails = useStore(state => state.updateJobDetails);
     const addNotification = useStore(state => state.addNotification);
@@ -35,19 +47,25 @@ function JobDetailsPanelContent({ job, setSelectedJob, onOpenTailorModal, onOpen
         if (job) {
             setNotes(job.notes || '');
             setContacts(job.contacts || []);
+            setLocalDescription(job.description || ''); 
             setActiveTab('description');
             setIsAnalyzing(false); 
+            setIsEditingDescription(!job.description); 
         }
-    }, [job?.id]);
+    }, [job?.id, job?.description]);
 
     const onAnalyzeClick = async () => {
         if (!activeProfile) {
             addNotification("Please select an active profile on the dashboard first.", "error");
             return;
         }
+        if (!localDescription) {
+            addNotification("Please paste a job description before analyzing.", "error");
+            return;
+        }
         setIsAnalyzing(true);
         try {
-            await handleAnalyzeJob(job.id, activeProfile.id);
+            await handleAnalyzeJob(job.id, activeProfile.id, localDescription);
         } catch (error) {
             setIsAnalyzing(false);
         }
@@ -65,6 +83,16 @@ function JobDetailsPanelContent({ job, setSelectedJob, onOpenTailorModal, onOpen
         setNotes(e.target.value);
         if (job?.id) debouncedSaveNotes(job.id, e.target.value);
     };
+
+    const onSaveDescription = () => {
+        if (!localDescription) {
+            addNotification("Description can't be empty.", "error");
+            return;
+        }
+        updateJobDetails(job.id, { description: localDescription });
+        setIsEditingDescription(false);
+    };
+
     const handleAddContact = () => {
         if (!newContact.name || !newContact.contact_info || !job?.id) return;
         const newContacts = [...(contacts || []), newContact];
@@ -78,12 +106,12 @@ function JobDetailsPanelContent({ job, setSelectedJob, onOpenTailorModal, onOpen
         setContacts(newContacts);
         updateJobDetails(job.id, { contacts: newContacts });
     };
+    
     const handleAddToTracker = () => {
         if (!job?.id) return;
         updateJobDetails(job.id, { is_tracked: true, status: 'Applied' });
         addNotification(`'${job.title}' added to your tracker!`, 'success');
     };
-
 
     if (!job) return null;
 
@@ -132,6 +160,17 @@ function JobDetailsPanelContent({ job, setSelectedJob, onOpenTailorModal, onOpen
                         {job.location && <p className="text-xs text-slate-400 mt-1">Location: {job.location}</p>}
                     </div>
                     <div className="flex items-center gap-2">
+                        {job.job_url && (
+                            <a 
+                                href={job.job_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 rounded-full text-slate-400 hover:bg-sky-50 hover:text-sky-600 transition-colors"
+                                title="View on original site"
+                            >
+                                <ExternalLink className="w-5 h-5" />
+                            </a>
+                        )}
                         <button 
                             onClick={onDeleteClick} 
                             className="p-2 rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
@@ -153,27 +192,56 @@ function JobDetailsPanelContent({ job, setSelectedJob, onOpenTailorModal, onOpen
                 
                 <div className="p-6 overflow-y-auto flex-grow">
                     {job.gemini_rating && <AIRatingDisplay />}
+                    
                     {activeTab === 'description' && (
-                        <div className="prose prose-slate max-w-none">
-                            {job.description ? (
-                                <p>{job.description}</p>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-semibold text-slate-800">Job Description</h3>
+                                {isEditingDescription ? (
+                                    <button
+                                        onClick={onSaveDescription}
+                                        disabled={!localDescription}
+                                        className="flex items-center gap-2 px-3 py-1 text-sm font-semibold text-white bg-emerald-600 rounded-md hover:bg-emerald-700 disabled:bg-emerald-300"
+                                        title="Save description"
+                                    >
+                                        <Save className="w-4 h-4" /> Save
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => setIsEditingDescription(true)}
+                                        className="flex items-center gap-2 px-3 py-1 text-sm font-semibold text-sky-700 bg-sky-100 rounded-md hover:bg-sky-200"
+                                        title="Edit description"
+                                    >
+                                        <Pencil className="w-4 h-4" /> Edit
+                                    </button>
+                                )}
+                            </div>
+
+                            {isEditingDescription ? (
+                                <div className="space-y-4">
+                                    {!job.description && (
+                                        <div className="p-4 bg-slate-50 rounded-lg">
+                                            <h4 className="font-semibold text-slate-600">No Description Found</h4>
+                                            <p className="text-sm text-slate-500">
+                                                Click the "View on original site" icon (top right) to find and paste the description here.
+                                            </p>
+                                        </div>
+                                    )}
+                                    <textarea 
+                                        value={localDescription}
+                                        onChange={(e) => setLocalDescription(e.target.value)}
+                                        placeholder="Paste the full job description here..."
+                                        className="w-full h-96 p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-sky-500"
+                                    />
+                                </div>
                             ) : (
-                                <div className="text-center p-8 bg-slate-50 rounded-lg">
-                                    <h3 className="font-semibold text-slate-600">No Description Available</h3>
-                                    <p className="text-sm text-slate-500">
-                                        This job was saved without a description (likely from LinkedIn).
-                                    </p>
-                                    <a 
-                                        href={job.job_url} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer" 
-                                        className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-md hover:bg-sky-700 transition-all no-underline">
-                                        View on original site <ExternalLink className="w-4 h-4" />
-                                    </a>
+                                <div className="prose prose-slate max-w-none">
+                                    <p>{localDescription}</p>
                                 </div>
                             )}
                         </div>
                     )}
+
                     {activeTab === 'notes' && ( 
                         <div>
                             <h3 className="text-lg font-semibold mb-2">My Notes</h3>
@@ -184,7 +252,6 @@ function JobDetailsPanelContent({ job, setSelectedJob, onOpenTailorModal, onOpen
                     {activeTab === 'contacts' && ( 
                         <div>
                             <h3 className="text-lg font-semibold mb-4">Key Contacts</h3>
-                            {/* ... (contacts content) ... */}
                         </div> 
                     )}
                 </div>
@@ -200,21 +267,44 @@ function JobDetailsPanelContent({ job, setSelectedJob, onOpenTailorModal, onOpen
                             </div>
                         )}
                         
-                        <div className="flex items-center gap-2 flex-wrap">
-                            {!job.gemini_rating && job.description && (
-                                <button 
-                                    onClick={onAnalyzeClick}
-                                    disabled={isAnalyzing || !activeProfile} 
-                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-all disabled:bg-blue-400 disabled:cursor-not-allowed"
-                                >
-                                    {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Brain className="w-5 h-5" />}
-                                    {isAnalyzing ? 'Analyzing...' : 'Analyze Job'}
-                                </button>
-                            )}
-                            <button onClick={onOpenTailorModal} disabled={!activeProfile} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-sky-600 rounded-md hover:bg-sky-700 transition-all disabled:bg-sky-400 disabled:cursor-not-allowed"><Sparkles className="w-5 h-5" />Tailor Resume</button>
-                            <button onClick={onOpenCoverLetterModal} disabled={!activeProfile} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-purple-600 rounded-md hover:bg-purple-700 transition-all disabled:bg-purple-400 disabled:cursor-not-allowed"><FileText className="w-5 h-5" />Generate Cover Letter</button>
+                        {/* --- UPDATED: AI Toolkit Buttons --- */}
+                        <div className="grid grid-cols-2 gap-2">
+                            <button 
+                                onClick={onAnalyzeClick}
+                                disabled={isAnalyzing || !localDescription || !activeProfile} 
+                                className="flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-all disabled:bg-blue-400 disabled:cursor-not-allowed"
+                            >
+                                {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Brain className="w-5 h-5" />}
+                                {isAnalyzing ? 'Analyzing...' : (job.gemini_rating ? 'Re-Analyze' : 'Analyze Job')}
+                            </button>
+                            
+                            <button 
+                                onClick={onOpenTailorModal} 
+                                disabled={!localDescription || !activeProfile} 
+                                className="flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-sky-600 rounded-md hover:bg-sky-700 transition-all disabled:bg-sky-400 disabled:cursor-not-allowed"
+                            >
+                                <Sparkles className="w-5 h-5" />Tailor Resume
+                            </button>
+                            
+                            <button 
+                                onClick={onOpenCoverLetterModal} 
+                                disabled={!localDescription || !activeProfile} 
+                                className="flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-purple-600 rounded-md hover:bg-purple-700 transition-all disabled:bg-purple-400 disabled:cursor-not-allowed"
+                            >
+                                <FileText className="w-5 h-5" />Cover Letter
+                            </button>
+                            
+                            {/* --- NEW BUTTON --- */}
+                            <button 
+                                onClick={onOpenOptimizedResumeModal} 
+                                disabled={!localDescription || !activeProfile} 
+                                className="flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-emerald-600 rounded-md hover:bg-emerald-700 transition-all disabled:bg-emerald-400 disabled:cursor-not-allowed"
+                            >
+                                <FilePen className="w-5 h-5" />Optimize Resume
+                            </button>
                         </div>
                     </div>
+                    
                     <div className="flex items-center gap-3">
                         {job.is_tracked ? (
                             <span className="flex-1 flex items-center justify-center gap-2 px-4 py-2 font-semibold text-emerald-700 bg-emerald-100 rounded-md">

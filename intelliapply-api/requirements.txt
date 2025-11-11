@@ -1,11 +1,19 @@
-# requirements.txt
 fastapi
 uvicorn[standard]
 arq
-redis
+redis<6
 google-generativeai
 python-dotenv
 supabase
-jobspy
+python-jobspy
 pandas
 fastapi-cors
+
+# --- New AI Crew Dependencies ---
+crewai
+crewai[google-genai]
+crewai-tools
+litellm
+langchain-google-genai
+langchain-core
+

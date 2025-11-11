@@ -2,22 +2,21 @@ import React, { useMemo, useCallback, useState } from 'react';
 import { DndContext, closestCorners, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Briefcase } from 'lucide-react'; // <-- Import Briefcase
 import { useStore } from '../../lib/store';
 
 const columnTitles = { 'Applied': 'Applied', 'Interviewing': 'Interviewing', 'Offer': 'Offer', 'Rejected': 'Rejected' };
 const columnColors = { 'Applied': 'bg-sky-500', 'Interviewing': 'bg-purple-500', 'Offer': 'bg-emerald-500', 'Rejected': 'bg-red-500' };
 
-// --- Helper to get company logo ---
+// --- Helper to get company logo (Unchanged) ---
 const getLogoUrl = (companyName) => {
     if (!companyName) {
         return `https://avatar.vercel.sh/${companyName}.png?text=?`; // Fallback
     }
-    // Use clearbit's free logo API
     return `https://logo.clearbit.com/${companyName.toLowerCase().replace(/ /g, '')}.com`;
 };
 
-// --- UPDATED JobCard ---
+// --- JobCard (Unchanged) ---
 function JobCard({ job, columnId }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ 
         id: job.id,
@@ -43,12 +42,10 @@ function JobCard({ job, columnId }) {
         <div ref={setNodeRef} style={style} {...attributes} {...listeners} onClick={() => setSelectedJob(job)}
             className={`bg-white p-3 mb-3 rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:border-sky-500 cursor-grab transition-all`}>
             
-            {/* --- Polished Logo and Title --- */}
             <div className="flex items-start gap-3">
                 <img
                     src={getLogoUrl(job.company)}
                     alt={`${job.company} logo`}
-                    // Fallback in case clearbit fails
                     onError={(e) => { e.target.src = `https://avatar.vercel.sh/${job.company}.png?text=${job.company.charAt(0)}`; }}
                     className="w-10 h-10 rounded-md border border-slate-100 object-contain"
                 />
@@ -57,7 +54,6 @@ function JobCard({ job, columnId }) {
                     <p className="text-xs text-slate-500 mt-1">{job.company}</p>
                 </div>
             </div>
-            {/* --- End Polished Logo --- */}
             
             {columnId === 'Interviewing' && (
                 <button onClick={handlePrepClick} className="mt-3 w-full flex items-center justify-center gap-2 text-xs font-bold text-purple-700 bg-purple-100 hover:bg-purple-200 rounded-md py-1.5 transition-colors">
@@ -69,7 +65,7 @@ function JobCard({ job, columnId }) {
     );
 }
 
-// Column (unchanged)
+// --- Column (Unchanged) ---
 function Column({ columnId, title, jobs }) {
     const { setNodeRef } = useSortable({ id: columnId, data: { type: 'Column' } });
 
@@ -93,7 +89,7 @@ function Column({ columnId, title, jobs }) {
     );
 }
 
-// Main Component (unchanged)
+// --- Main Component ---
 export default function KanbanTracker({ jobs, updateJobStatus }) {
     const [activeJob, setActiveJob] = useState(null);
 
@@ -153,6 +149,13 @@ export default function KanbanTracker({ jobs, updateJobStatus }) {
 
     return (
         <div>
+            {/* --- NEW: Page Header --- */}
+            <div className="flex items-center gap-3 mb-6">
+                <Briefcase className="w-7 h-7" />
+                <h2 className="text-2xl font-bold">Application Tracker</h2>
+            </div>
+            {/* --- END: Page Header --- */}
+
             <DndContext 
                 sensors={sensors} 
                 collisionDetection={closestCorners} 
