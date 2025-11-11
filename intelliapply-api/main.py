@@ -26,7 +26,7 @@ from arq_worker import WorkerSettings
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-# --- Lifespan Manager (THIS IS THE FIX) ---
+# --- Lifespan Manager ---
 worker_task = None
 ARQ_REDIS = None
 
@@ -83,7 +83,7 @@ from fastapi.middleware.cors import CORSMiddleware
 origins = [
     "http://localhost:5173",
     "http://localhost:5174",
-    "https://ai-job-scraper-zeta.vercel.app" # <-- ADD YOUR LIVE VERCEL URL HERE
+    "https://ai-job-scraper-zeta.vercel.app" # <-- YOUR LIVE VERCEL URL
 ]
 # --- END OF CHANGE ---
 
@@ -414,7 +414,7 @@ async def delete_jobs(request: JobDeleteRequest, user_id: str = Depends(get_curr
         log.error(f"Failed to delete jobs: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/vD/jobs/delete-all-untracked")
+@app.post("/api/v1/jobs/delete-all-untracked")
 async def delete_all_untracked_jobs(user_id: str = Depends(get_current_user)):
     try:
         response = supabase.table("jobs") \
