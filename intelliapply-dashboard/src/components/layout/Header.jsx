@@ -1,4 +1,3 @@
-// src/components/layout/Header.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { 
     Briefcase, 
@@ -15,8 +14,8 @@ import {
 } from 'lucide-react';
 import { useStore } from '../../lib/store';
 import { supabase } from '../../lib/supabaseClient';
+import { Link } from 'react-router-dom';
 
-// --- Reusable NavLink (Unchanged) ---
 function NavLink({ view, setView, currentView, viewName, children }) {
   const isActive = currentView === viewName;
   return (
@@ -33,14 +32,13 @@ function NavLink({ view, setView, currentView, viewName, children }) {
   );
 }
 
-// --- Mobile NavLink (Unchanged) ---
 function MobileNavLink({ view, setView, currentView, viewName, children, onClick }) {
     const isActive = currentView === viewName;
     return (
         <button
             onClick={() => {
                 setView(viewName);
-                onClick(); // Close menu on click
+                onClick();
             }}
             className={`flex items-center gap-3 w-full text-left rounded-md p-3 text-base font-medium ${
                 isActive
@@ -53,8 +51,6 @@ function MobileNavLink({ view, setView, currentView, viewName, children, onClick
     );
 }
 
-
-// --- Avatar Component (Unchanged) ---
 function Avatar({ email }) {
   const getInitials = (email) => {
     return email ? email[0].toUpperCase() : <User className="w-4 h-4" />;
@@ -116,14 +112,9 @@ export default function Header() {
   return (
     <>
       <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200 sticky top-0 z-40">
-        {/* --- THIS IS THE FIX ---
-          - 'max-w-7xl' and 'mx-auto' have been REMOVED.
-          - Responsive padding is kept ('px-4 sm:px-6 lg:px-8').
-        */}
         <div className="w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             
-            {/* --- LEFT SIDE (LOGO & MOBILE MENU) --- */}
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -133,16 +124,13 @@ export default function Header() {
                 {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
               
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <Link to="/" className="flex items-center gap-2 flex-shrink-0">
                 <Briefcase className="w-7 h-7 text-sky-600" />
                 <h1 className="text-xl font-bold text-slate-800">IntelliApply</h1>
-              </div>
+              </Link>
             </div>
 
-            {/* --- RIGHT SIDE (NAV, ACTIONS & USER) --- */}
-            {/* --- THIS IS THE FIX: Grouped all desktop items on the right --- */}
             <div className="flex items-center gap-4">
-              {/* --- MIDDLE (DESKTOP NAV) --- */}
               <div className="hidden md:flex items-center gap-2">
                 <NavLink view={view} setView={setView} currentView={view} viewName="inbox"><Inbox className="w-4 h-4" />Inbox</NavLink>
                 <NavLink view={view} setView={setView} currentView={view} viewName="library"><Archive className="w-4 h-4" />Job Library</NavLink>
@@ -160,7 +148,6 @@ export default function Header() {
                 </button>
               </div>
 
-              {/* --- ACTIONS & USER --- */}
               {profiles.length > 0 && (
                 <div className="hidden md:flex items-center gap-2">
                   <User className="w-4 h-4 text-slate-500" />
@@ -228,7 +215,6 @@ export default function Header() {
           </div>
         </div>
 
-        {/* --- MOBILE MENU PANEL (Unchanged) --- */}
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-slate-200 bg-white shadow-lg p-4 space-y-4">
             <nav className="space-y-1">

@@ -1,11 +1,8 @@
-// src/lib/store.js
 import { create } from 'zustand';
 import { supabase } from './supabaseClient';
 
-// --- THIS IS THE CHANGE ---
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-// --- Auth Helper (NOW ASYNC) ---
 const getAuthHeaders = async () => {
   const { data, error } = await supabase.auth.getSession();
 
@@ -19,7 +16,6 @@ const getAuthHeaders = async () => {
   };
 };
 
-// --- Helper to parse API errors ---
 const getErrorMessage = async (response) => {
     try {
         const data = await response.json();
@@ -28,18 +24,16 @@ const getErrorMessage = async (response) => {
                 const errorObj = JSON.parse(data.detail);
                 return errorObj.message || data.detail;
             } catch (e) {
-                return data.detail; // It's just a string
+                return data.detail;
             }
         }
     } catch (e) {
-        // Fallback
     }
     return response.statusText || 'An unknown error occurred.';
 }
 
 
 export const useStore = create((set, get) => ({
-  // --- STATE ---
   view: 'inbox',
   allJobs: [],
   profiles: [],
@@ -51,7 +45,6 @@ export const useStore = create((set, get) => ({
   isSearching: false,
   activeProfileId: null,
 
-  // --- AI Modal State ---
   isTailorModalOpen: false,
   isCoverLetterModalOpen: false,
   isInterviewPrepModalOpen: false,
@@ -59,7 +52,6 @@ export const useStore = create((set, get) => ({
   isAddJobModalOpen: false,
   isOptimizedResumeModalOpen: false,
 
-  // --- AI Generation State ---
   isGenerating: false,
   tailoringSuggestions: [],
   coverLetter: '',
@@ -72,12 +64,10 @@ export const useStore = create((set, get) => ({
   isSearchModalOpen: false,
   selectedJobIds: new Set(),
 
-  // --- ACTIONS ---
   setView: (view) => set({ view }),
   setSelectedJob: (job) => set({ selectedJob: job }),
   setActiveProfileId: (profileId) => set({ activeProfileId: profileId }),
 
-  // --- Modal Actions ---
   openTailorModal: () =>
     set({ isTailorModalOpen: true, tailoringSuggestions: [], aiError: null }),
   closeTailorModal: () => set({ isTailorModalOpen: false }),
@@ -99,7 +89,6 @@ export const useStore = create((set, get) => ({
     set({ isOptimizedResumeModalOpen: true, optimizedResume: '', aiError: null }),
   closeOptimizedResumeModal: () => set({ isOptimizedResumeModalOpen: false }),
 
-  // Notifications & Confirmation
   addNotification: (message, type = 'success') => {
     const id = Date.now();
     set((state) => ({
@@ -118,7 +107,6 @@ export const useStore = create((set, get) => ({
     set({ modalState: { isOpen: false, onConfirm: null, title: '', message: '' } });
   },
 
-  // --- Job Selection ---
   toggleJobSelection: (jobId) => {
     set((state) => {
       const newSelectedIds = new Set(state.selectedJobIds);
@@ -129,7 +117,6 @@ export const useStore = create((set, get) => ({
   },
   clearJobSelection: () => set({ selectedJobIds: new Set() }),
 
-  // --- Data Fetching ---
   fetchAllData: async () => {
     set({ loading: true });
     try {
@@ -179,7 +166,6 @@ export const useStore = create((set, get) => ({
     set({ searches: data || [] });
   },
 
-  // --- Realtime ---
   subscribeToJobs: () => {
     if (get().channel) return;
 
@@ -246,7 +232,6 @@ export const useStore = create((set, get) => ({
     }
   },
 
-  // --- Backend API Actions ---
   handleTriggerJobSearch: async () => {
     if (get().isSearching) {
       get().addNotification('A search is already in progress.', 'info');
@@ -466,7 +451,6 @@ export const useStore = create((set, get) => ({
     }
   },
 
-  // --- CRUD Operations ---
   handleSaveProfile: async (profile, file) => {
     set({ loading: true });
     let savedData = null;
@@ -736,6 +720,8 @@ export const useStore = create((set, get) => ({
     if (error) {
       get().addNotification(`Error signing out: ${error.message}`, 'error');
       set({ loading: false });
+    } else {
+      window.location.pathname = '/';
     }
     set({
       allJobs: [],
