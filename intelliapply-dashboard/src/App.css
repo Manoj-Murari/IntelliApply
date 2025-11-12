@@ -1,9 +1,6 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
+/* The #root styles (max-width, padding) have been REMOVED. 
+Layout is now controlled by Tailwind classes in MainDashboard.jsx.
+*/
 
 .logo {
   height: 6em;

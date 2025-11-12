@@ -1,8 +1,10 @@
+// src/components/features/KanbanTracker.jsx
+
 import React, { useMemo, useCallback, useState } from 'react';
 import { DndContext, closestCorners, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Sparkles, Briefcase } from 'lucide-react'; // <-- Import Briefcase
+import { Sparkles, Briefcase } from 'lucide-react';
 import { useStore } from '../../lib/store';
 
 const columnTitles = { 'Applied': 'Applied', 'Interviewing': 'Interviewing', 'Offer': 'Offer', 'Rejected': 'Rejected' };
@@ -65,12 +67,12 @@ function JobCard({ job, columnId }) {
     );
 }
 
-// --- Column (Unchanged) ---
+// --- Column (Unchanged from last time) ---
 function Column({ columnId, title, jobs }) {
     const { setNodeRef } = useSortable({ id: columnId, data: { type: 'Column' } });
 
     return (
-        <div className="bg-slate-100 rounded-lg w-72 flex-shrink-0 flex flex-col">
+        <div className="bg-slate-100 rounded-lg w-full md:w-72 flex-shrink-0 flex flex-col">
             <div className="p-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${columnColors[columnId]}`}></div>
@@ -148,13 +150,14 @@ export default function KanbanTracker({ jobs, updateJobStatus }) {
     }, [findColumnForJob, updateJobStatus]);
 
     return (
-        <div>
-            {/* --- NEW: Page Header --- */}
+        // --- THIS IS THE FIX ---
+        // We wrap the component in a 'max-w-7xl mx-auto' to center it
+        // on large screens, just like your inbox was originally.
+        <div className="max-w-7xl mx-auto">
             <div className="flex items-center gap-3 mb-6">
                 <Briefcase className="w-7 h-7" />
                 <h2 className="text-2xl font-bold">Application Tracker</h2>
             </div>
-            {/* --- END: Page Header --- */}
 
             <DndContext 
                 sensors={sensors} 
@@ -162,7 +165,8 @@ export default function KanbanTracker({ jobs, updateJobStatus }) {
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
             >
-                <div className="flex gap-4 overflow-x-auto pb-4">
+                {/* This responsive container is unchanged from last time */}
+                <div className="flex flex-col md:flex-row gap-4 md:overflow-x-auto md:pb-4">
                     <SortableContext items={Object.keys(columns)}>
                         {Object.entries(columns).map(([columnId, columnJobs]) => (
                             <Column

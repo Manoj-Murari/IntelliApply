@@ -1,3 +1,4 @@
+// src/MainDashboard.jsx
 import React, { useEffect } from 'react';
 import { useStore } from './lib/store';
 
@@ -19,7 +20,7 @@ import WelcomeModal from './components/ui/WelcomeModal';
 import GlobalLoader from './components/ui/GlobalLoader'; 
 import SearchModal from './components/features/SearchModal'; 
 import AddJobModal from './components/features/AddJobModal';
-import OptimizedResumeModal from './components/features/OptimizedResumeModal'; // <-- NEW IMPORT
+import OptimizedResumeModal from './components/features/OptimizedResumeModal';
 
 export default function MainDashboard() {
     // Get all state from the store
@@ -35,7 +36,7 @@ export default function MainDashboard() {
         isCoverLetterModalOpen, openCoverLetterModal, closeCoverLetterModal,
         isInterviewPrepModalOpen, openInterviewPrepModal, closeInterviewPrepModal,
         isApplicationHelperOpen, openApplicationHelper, closeApplicationHelper,
-        isOptimizedResumeModalOpen, openOptimizedResumeModal, closeOptimizedResumeModal, // <-- NEW
+        isOptimizedResumeModalOpen, openOptimizedResumeModal, closeOptimizedResumeModal,
         // --- End Modal State ---
         modalState, closeConfirmationModal,
         notifications, removeNotification,
@@ -73,30 +74,36 @@ export default function MainDashboard() {
             
             <Header />
             
-            <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-                 {/* --- Main Page Router --- */}
-                 {view === 'inbox' && (
-                    <Dashboard 
-                        setSelectedJob={setSelectedJob} 
-                        onTriggerJobSearch={handleTriggerJobSearch} 
-                        isSearching={isSearching} 
-                    />
-                 )}
-                 {view === 'library' && (
-                    <AllJobs 
-                        jobs={allJobs} 
-                        setSelectedJob={setSelectedJob} 
-                    />
-                 )}
-                 {view === 'tracker' && (
-                    <KanbanTracker 
-                        jobs={allJobs} 
-                        updateJobStatus={updateJobStatus} 
-                        setSelectedJob={setSelectedJob} 
-                    />
-                 )}
-                 {view === 'analytics' && <Analytics jobs={allJobs} profiles={profiles} searches={searches} />}
-                 {view === 'settings' && <Settings />} 
+            {/* --- THIS IS THE FIX ---
+              - We are ADDING BACK 'max-w-7xl' and 'mx-auto'.
+              - This will create the "gaps" on the left and right
+              - and align your main content with the header.
+            */}
+            <main className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+                
+                {/* --- Main Page Router --- */}
+                {view === 'inbox' && (
+                  <Dashboard 
+                      setSelectedJob={setSelectedJob} 
+                      onTriggerJobSearch={handleTriggerJobSearch} 
+                      isSearching={isSearching} 
+                  />
+                )}
+                {view === 'library' && (
+                  <AllJobs 
+                      jobs={allJobs} 
+                      setSelectedJob={setSelectedJob} 
+                  />
+                )}
+                {view === 'tracker' && (
+                  <KanbanTracker 
+                      jobs={allJobs} 
+                      updateJobStatus={updateJobStatus} 
+                      setSelectedJob={setSelectedJob} 
+                  />
+                )}
+                {view === 'analytics' && <Analytics jobs={allJobs} profiles={profiles} searches={searches} />}
+                {view === 'settings' && <Settings />} 
             </main>
             
             <JobDetailsPanel 
@@ -105,7 +112,7 @@ export default function MainDashboard() {
                 onOpenTailorModal={openTailorModal}
                 onOpenCoverLetterModal={openCoverLetterModal}
                 onOpenApplicationHelper={openApplicationHelper}
-                onOpenOptimizedResumeModal={openOptimizedResumeModal} // <-- NEW PROP
+                onOpenOptimizedResumeModal={openOptimizedResumeModal}
                 activeProfile={activeProfile} 
             />
             
@@ -117,7 +124,7 @@ export default function MainDashboard() {
             <AITailoringModal isOpen={isTailorModalOpen} onClose={closeTailorModal} job={selectedJob} profile={activeProfile} />
             <AICoverLetterModal isOpen={isCoverLetterModalOpen} onClose={closeCoverLetterModal} job={selectedJob} profile={activeProfile} />
             <AIInterviewPrepModal isOpen={isInterviewPrepModalOpen} onClose={closeInterviewPrepModal} job={selectedJob} profile={activeProfile} />
-            <OptimizedResumeModal isOpen={isOptimizedResumeModalOpen} onClose={closeOptimizedResumeModal} job={selectedJob} profile={activeProfile} /> {/* <-- NEW */}
+            <OptimizedResumeModal isOpen={isOptimizedResumeModalOpen} onClose={closeOptimizedResumeModal} job={selectedJob} profile={activeProfile} /> 
 
             <ApplicationHelperModal 
                 isOpen={isApplicationHelperOpen} 
