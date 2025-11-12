@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Briefcase, Search, BrainCircuit, LayoutDashboard, Cpu, Menu, X, Github } from 'lucide-react';
+import { supabase } from '../../lib/supabaseClient';
 
 // 1. Header Component
 function Header() {
@@ -16,6 +17,7 @@ function Header() {
   return (
     <header className="bg-white">
       <nav className="mx-auto flex max-w-7xl items-center justify-between p-6 lg:px-8" aria-label="Global">
+        {/* Logo */}
         <div className="flex lg:flex-1">
           <Link to="/" className="-m-1.5 p-1.5 flex items-center gap-2">
             <span className="sr-only">IntelliApply</span>
@@ -23,6 +25,8 @@ function Header() {
             <span className="text-xl font-bold text-slate-900">IntelliApply</span>
           </Link>
         </div>
+
+        {/* Mobile Menu Button */}
         <div className="flex lg:hidden">
           <button
             type="button"
@@ -33,6 +37,8 @@ function Header() {
             <Menu className="h-6 w-6" aria-hidden="true" />
           </button>
         </div>
+
+        {/* Desktop Nav Links */}
         <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:items-center lg:gap-x-8">
           {navLinks.map((item) => (
             item.external ? (
@@ -64,6 +70,7 @@ function Header() {
         </div>
       </nav>
 
+      {/* Mobile Menu Panel */}
       {mobileMenuOpen && (
         <div className="lg:hidden" role="dialog" aria-modal="true">
           <div className="fixed inset-0 z-50" />
@@ -125,7 +132,7 @@ function Header() {
   );
 }
 
-// 2. Hero Component (Stats section fixed)
+// 2. Hero Component
 function Hero() {
   return (
     <div className="bg-white">
@@ -147,11 +154,6 @@ function Hero() {
               </Link>
             </div>
             
-            {/* --- THIS IS THE FIX ---
-              - Reduced gap on mobile (gap-x-6) and adjusted larger screen gaps.
-              - Made title text smaller on mobile (text-xl) and larger on sm screens (sm:text-2xl).
-              - Made subtitle text smaller on mobile (text-xs) and larger on sm screens (sm:text-sm).
-            */}
             <div className="mt-16 flex justify-center gap-x-6 sm:gap-x-12 lg:gap-x-16">
               <div>
                 <span className="block text-xl sm:text-2xl font-bold text-slate-900">AI-Powered</span>
@@ -166,7 +168,6 @@ function Hero() {
                 <span className="block text-xs sm:text-sm text-slate-500">Monitoring</span>
               </div>
             </div>
-            {/* --- END OF FIX --- */}
 
           </div>
         </div>
@@ -330,6 +331,33 @@ function Footer() {
 
 // Main component that assembles the page
 export default function LandingPage() {
+  const navigate = useNavigate();
+
+  // --- THIS IS THE FIX ---
+  useEffect(() => {
+    // Check if a user is already logged in
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        // If logged in, redirect to the app dashboard
+        navigate('/app', { replace: true });
+      }
+    });
+
+    // Also listen for the successful login event
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        navigate('/app', { replace: true });
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
+  // --- END OF FIX ---
+
   return (
     <div className="bg-white">
       <Header />
