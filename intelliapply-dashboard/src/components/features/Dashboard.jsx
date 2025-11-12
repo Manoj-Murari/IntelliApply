@@ -1,4 +1,3 @@
-// src/components/features/Dashboard.jsx
 import React, { useState, useMemo } from 'react';
 import { useStore } from '../../lib/store';
 import { 
@@ -8,7 +7,6 @@ import {
 import EmptyDashboard from './EmptyDashboard';
 import JobCard from '../ui/JobCard';
 
-// --- SkeletonGrid Component (Unchanged) ---
 function SkeletonGrid() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -28,17 +26,14 @@ function SkeletonGrid() {
   );
 }
 
-// --- Main Dashboard Component (now the "Inbox View") ---
 export default function Dashboard({ setSelectedJob, onTriggerJobSearch, isSearching }) {
     
-  // --- State for filters, sorting, and NEW local search ---
   const [platformFilter, setPlatformFilter] = useState('all'); 
   const [sortOrder, setSortOrder] = useState('date_newest');
   const [isMenuOpen, setIsMenuOpen] = useState(false); 
   const [searchQuery, setSearchQuery] = useState(''); 
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
 
-  // --- Get all state from the store ---
   const allJobs = useStore((state) => state.allJobs);
   const openSearchModal = useStore((state) => state.openSearchModal);
   const handleBulkAnalyze = useStore((state) => state.handleBulkAnalyze);
@@ -51,7 +46,6 @@ export default function Dashboard({ setSelectedJob, onTriggerJobSearch, isSearch
   const handleDeleteSelectedJobs = useStore(state => state.handleDeleteSelectedJobs);
   const searches = useStore(state => state.searches);
   
-  // --- Filter/Sort Logic ---
   const platformFilterOptions = [
       { value: 'all', label: 'All Platforms' },
       { value: 'linkedin', label: 'LinkedIn' },
@@ -90,7 +84,6 @@ export default function Dashboard({ setSelectedJob, onTriggerJobSearch, isSearch
   const jobsToAnalyzeCount = filteredAndSortedJobs.filter(j => !j.gemini_rating && j.description).length;
   const hasSearches = searches.length > 0;
 
-  // --- Filter/Sort Handlers ---
   const handleFilterChange = (e) => {
       setPlatformFilter(e.target.value);
       clearJobSelection(); 
@@ -132,15 +125,11 @@ export default function Dashboard({ setSelectedJob, onTriggerJobSearch, isSearch
 
   return (
       <div className="space-y-6">
-          {/* --- The Job Inbox List --- */}
           <section>
               
-              {/* --- UPDATED: Responsive, Context-Aware Header --- */}
               <div className={`flex ${selectedJobIds.size === 0 ? 'flex-col md:flex-row' : 'flex-row'} justify-between items-center gap-4 mb-6`}>
                   {selectedJobIds.size === 0 ? (
-                      // --- DEFAULT HEADER ---
                       <>
-                          {/* --- LEFT SIDE: Big Search Bar --- */}
                           <div className="flex-1 w-full md:max-w-2xl">
                               <div className="relative">
                                   <span className="absolute inset-y-0 left-0 flex items-center pl-4">
@@ -156,7 +145,6 @@ export default function Dashboard({ setSelectedJob, onTriggerJobSearch, isSearch
                               </div>
                           </div>
                           
-                          {/* --- RIGHT SIDE: Filters & Actions --- */}
                           <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto flex-shrink-0">
                               
                               <div className="relative w-full sm:w-auto">
@@ -201,27 +189,35 @@ export default function Dashboard({ setSelectedJob, onTriggerJobSearch, isSearch
                                       </div>
                                   )}
                               </div>
-                              
-                              <button
-                                  onClick={() => handleBulkAnalyze(filteredAndSortedJobs)}
-                                  disabled={!activeProfileId || jobsToAnalyzeCount === 0}
-                                  className="flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-semibold text-blue-700 bg-blue-100 border border-blue-200 rounded-md hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
-                              >
-                                  <Brain className="w-4 h-4" />
-                                  Analyze ({jobsToAnalyzeCount})
-                              </button>
-                              <button
-                                  onClick={onTriggerJobSearch}
-                                  disabled={isSearching}
-                                  className="flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-semibold text-white bg-sky-600 rounded-md hover:bg-sky-700 transition-all disabled:bg-sky-300 w-full sm:w-auto"
-                              >
-                                  {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                                  Find Jobs
-                              </button>
+
+                              <div className="relative rounded-lg border border-slate-300 bg-white/50 shadow-sm p-1.5 w-full sm:w-auto">
+                                <div className="absolute -top-2.5 left-2">
+                                    <span className="px-2 py-0.5 text-xs font-semibold text-sky-700 bg-sky-100 rounded-full border border-slate-300">
+                                        AI Powered
+                                    </span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
+                                    <button
+                                        onClick={() => handleBulkAnalyze(filteredAndSortedJobs)}
+                                        disabled={!activeProfileId || jobsToAnalyzeCount === 0}
+                                        className="flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-semibold text-blue-700 bg-blue-100 border border-blue-200 rounded-md hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+                                    >
+                                        <Brain className="w-4 h-4" />
+                                        Analyze ({jobsToAnalyzeCount})
+                                    </button>
+                                    <button
+                                        onClick={onTriggerJobSearch}
+                                        disabled={isSearching}
+                                        className="flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-semibold text-white bg-sky-600 rounded-md hover:bg-sky-700 transition-all disabled:bg-sky-300 w-full sm:w-auto"
+                                    >
+                                        {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                                        Find Jobs
+                                    </button>
+                                </div>
+                              </div>
                           </div>
                       </>
                   ) : (
-                      // --- SELECTION HEADER ---
                       <>
                           <div className="flex items-center gap-3">
                               <button onClick={clearJobSelection} className="p-2 rounded-full hover:bg-slate-100">
@@ -248,9 +244,7 @@ export default function Dashboard({ setSelectedJob, onTriggerJobSearch, isSearch
                       </>
                   )}
               </div>
-              {/* --- END: Context-Aware Header --- */}
               
-              {/* --- Job Grid --- */}
               <div className="bg-white/50 border border-slate-200 rounded-lg p-4 min-h-[300px]">
                   {isSearching && allJobs.length === 0 ? ( 
                       <SkeletonGrid />

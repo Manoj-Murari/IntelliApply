@@ -1,4 +1,3 @@
-// src/components/features/AllJobs.jsx
 import React, { useState, useMemo } from 'react';
 import { useStore } from '../../lib/store';
 import { 
@@ -8,14 +7,12 @@ import {
 import JobCard from '../ui/JobCard';
 
 export default function AllJobs({ jobs, setSelectedJob }) {
-    // --- State for filters, sorting, and NEW local search ---
     const [platformFilter, setPlatformFilter] = useState('all'); 
     const [sortOrder, setSortOrder] = useState('date_newest');
-    const [isMenuOpen, setIsMenuOpen] = useState(false); // For delete dropdown
-    const [searchQuery, setSearchQuery] = useState(''); // <-- NEW: Local search query
-    const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false); // <-- NEW
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
 
-    // Selectors from the store
     const selectedJobIds = useStore(state => state.selectedJobIds);
     const toggleJobSelection = useStore(state => state.toggleJobSelection);
     const clearJobSelection = useStore(state => state.clearJobSelection);
@@ -41,10 +38,8 @@ export default function AllJobs({ jobs, setSelectedJob }) {
     const filteredAndSortedJobs = useMemo(() => {
         let processedJobs = [...jobs];
 
-        // --- KEY FILTER: Only show tracked jobs ---
         processedJobs = processedJobs.filter(job => job.is_tracked);
 
-        // 1. Filter by local Search Query
         if (searchQuery) {
             processedJobs = processedJobs.filter(job => 
                 job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -52,12 +47,10 @@ export default function AllJobs({ jobs, setSelectedJob }) {
             );
         }
 
-        // 2. Filter by platform
         if (platformFilter !== 'all') {
             processedJobs = processedJobs.filter(job => job.job_url && job.job_url.includes(platformFilter));
         }
 
-        // 3. Sort
         if (sortOrder === 'title_az') {
             processedJobs.sort((a, b) => a.title.localeCompare(b.title));
         } else {
@@ -65,7 +58,7 @@ export default function AllJobs({ jobs, setSelectedJob }) {
         }
 
         return processedJobs;
-    }, [jobs, platformFilter, sortOrder, searchQuery]); // 'jobs' is allJobs
+    }, [jobs, platformFilter, sortOrder, searchQuery]);
     
     const jobsToAnalyzeCount = filteredAndSortedJobs.filter(j => !j.gemini_rating && j.description).length;
 
@@ -100,7 +93,6 @@ export default function AllJobs({ jobs, setSelectedJob }) {
         );
     };
     
-    // --- NEW: Select All Handler ---
     const handleSelectAll = () => {
         filteredAndSortedJobs.forEach(job => {
             if (!selectedJobIds.has(job.id)) {
@@ -111,12 +103,9 @@ export default function AllJobs({ jobs, setSelectedJob }) {
 
     return (
         <div>
-            {/* --- UPDATED: Responsive, Context-Aware Header --- */}
             <div className={`flex ${selectedJobIds.size === 0 ? 'flex-col md:flex-row' : 'flex-row'} justify-between items-center gap-4 mb-6`}>
                 {selectedJobIds.size === 0 ? (
-                    // --- DEFAULT HEADER ---
                     <>
-                        {/* --- LEFT SIDE: Big Search Bar --- */}
                         <div className="flex-1 w-full md:max-w-2xl">
                             <div className="relative">
                                 <span className="absolute inset-y-0 left-0 flex items-center pl-4">
@@ -132,7 +121,6 @@ export default function AllJobs({ jobs, setSelectedJob }) {
                             </div>
                         </div>
                         
-                        {/* --- RIGHT SIDE: Filters & Actions --- */}
                         <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto flex-shrink-0">
                             <div className="relative w-full sm:w-auto">
                                 <button
@@ -183,10 +171,9 @@ export default function AllJobs({ jobs, setSelectedJob }) {
                                 className="flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-semibold text-blue-700 bg-blue-100 border border-blue-200 rounded-md hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
                             >
                                 <Brain className="w-4 h-4" />
-                                Analyze ({jobsToAnalyzeCount})
+                                AI Analyze ({jobsToAnalyzeCount})
                             </button>
 
-                            {/* --- "New Job" Button --- */}
                             <button
                                 onClick={openAddJobModal}
                                 className="flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-semibold text-white bg-sky-600 rounded-md hover:bg-sky-700 transition-colors w-full sm:w-auto"
@@ -197,7 +184,6 @@ export default function AllJobs({ jobs, setSelectedJob }) {
                         </div>
                     </>
                 ) : (
-                    // --- SELECTION HEADER ---
                     <>
                         <div className="flex items-center gap-3">
                             <button onClick={clearJobSelection} className="p-2 rounded-full hover:bg-slate-100">
@@ -224,8 +210,6 @@ export default function AllJobs({ jobs, setSelectedJob }) {
                     </>
                 )}
             </div>
-            {/* --- END: Context-Aware Header --- */}
-
 
             <div className="bg-white/50 border border-slate-200 rounded-lg p-4 min-h-[400px]">
                 {filteredAndSortedJobs.length > 0 ? (

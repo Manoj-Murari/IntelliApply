@@ -2,15 +2,16 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Briefcase, Search, BrainCircuit, LayoutDashboard, Cpu, Menu, X, Github } from 'lucide-react';
 
-// 1. Header Component (Now with hover transitions)
+// 1. Header Component (Matches Image)
 function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // --- FIX #1: Changed "Sign In" to be a <Link> component ---
   const navLinks = [
     { name: 'Features', href: '#features' },
     { name: 'How It Works', href: '#how-it-works' },
     { name: 'GitHub', href: 'https://github.com/Manoj-Murari/AI-Job-Scraper', external: true },
-    { name: 'Sign In', href: '/app', external: false },
+    { name: 'Sign In', href: '/app', external: false }, // This will now be rendered as a <Link>
   ];
 
   return (
@@ -40,15 +41,26 @@ function Header() {
         {/* Desktop Nav Links */}
         <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:items-center lg:gap-x-8">
           {navLinks.map((item) => (
-            <a
-              key={item.name}
-              href={item.href}
-              target={item.external ? '_blank' : '_self'}
-              rel={item.external ? 'noopener noreferrer' : ''}
-              className="text-sm font-semibold leading-6 text-slate-600 hover:text-slate-900 transition-colors"
-            >
-              {item.name}
-            </a>
+            // --- FIX #1 (Continued): Use <Link> for internal links, <a> for external ---
+            item.external ? (
+              <a
+                key={item.name}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-semibold leading-6 text-slate-600 hover:text-slate-900 transition-colors"
+              >
+                {item.name}
+              </a>
+            ) : (
+              <Link
+                key={item.name}
+                to={item.href}
+                className="text-sm font-semibold leading-6 text-slate-600 hover:text-slate-900 transition-colors"
+              >
+                {item.name}
+              </Link>
+            )
           ))}
           <Link
             to="/app"
@@ -83,15 +95,25 @@ function Header() {
               <div className="-my-6 divide-y divide-slate-500/10">
                 <div className="space-y-2 py-6">
                   {navLinks.map((item) => (
-                    <a
-                      key={item.name}
-                      href={item.href}
-                      target={item.external ? '_blank' : '_self'}
-                      rel={item.external ? 'noopener noreferrer' : ''}
-                      className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-slate-900 hover:bg-slate-50"
-                    >
-                      {item.name}
-                    </a>
+                    item.external ? (
+                      <a
+                        key={item.name}
+                        href={item.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-slate-900 hover:bg-slate-50"
+                      >
+                        {item.name}
+                      </a>
+                    ) : (
+                      <Link
+                        key={item.name}
+                        to={item.href}
+                        className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-slate-900 hover:bg-slate-50"
+                      >
+                        {item.name}
+                      </Link>
+                    )
                   ))}
                 </div>
                 <div className="py-6">
@@ -116,7 +138,6 @@ function Hero() {
   return (
     <div className="bg-white">
       <div className="relative isolate px-6 lg:px-8">
-        {/* Padding on this div was reduced from py-32/48/56 to py-24/32 */}
         <div className="mx-auto max-w-2xl py-24 sm:py-32">
           <div className="text-center">
             <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-6xl">
@@ -133,20 +154,24 @@ function Hero() {
                 Get Started for Free
               </Link>
             </div>
+            
+            {/* --- FIX #2: Updated Hero Stats --- */}
             <div className="mt-16 flex justify-center gap-x-8 sm:gap-x-16">
               <div>
-                <span className="block text-2xl font-bold text-slate-900">10K+</span>
-                <span className="text-sm text-slate-500">Jobs Tracked</span>
+                <span className="block text-2xl font-bold text-slate-900">AI-Powered</span>
+                <span className="text-sm text-slate-500">Smart Rankings</span>
               </div>
               <div>
-                <span className="block text-2xl font-bold text-slate-900">95%</span>
-                <span className="text-sm text-slate-500">Accuracy Rate</span>
+                <span className="block text-2xl font-bold text-slate-900">All-in-One</span>
+                <span className="text-sm text-slate-500">Tracker</span>
               </div>
               <div>
                 <span className="block text-2xl font-bold text-slate-900">24/7</span>
                 <span className="text-sm text-slate-500">Monitoring</span>
               </div>
             </div>
+            {/* --- END OF FIX --- */}
+
           </div>
         </div>
       </div>
