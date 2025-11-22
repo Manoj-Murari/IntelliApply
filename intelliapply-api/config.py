@@ -43,6 +43,51 @@ class GeminiLLM(LLM):
     def _llm_type(self) -> str:
         return "gemini"
     
+# config.py
+import os
+from dotenv import load_dotenv
+import logging
+from typing import Any, List, Optional
+
+# Set up logging FIRST
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
+
+# Load environment variables
+load_dotenv()
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+if not GEMINI_API_KEY:
+    raise ValueError("❌ GEMINI_API_KEY not found in .env file!")
+
+# Set GOOGLE_API_KEY for LiteLLM
+os.environ['GOOGLE_API_KEY'] = GEMINI_API_KEY
+log.info("✅ GOOGLE_API_KEY set from GEMINI_API_KEY")
+
+# Import after setting env vars
+import google.generativeai as genai
+from supabase import create_client, Client
+from pydantic import Field
+from langchain_core.language_models.llms import LLM
+from langchain_core.callbacks.manager import CallbackManagerForLLMRun
+import litellm
+
+# Configure LiteLLM to suppress verbose logs
+litellm.suppress_debug_info = True
+
+# --- Custom LLM Wrapper for CrewAI ---
+class GeminiLLM(LLM):
+    """Custom LLM wrapper using LiteLLM for Gemini"""
+    
+    model: str = Field(default="gemini/gemini-2.5-flash")
+    temperature: float = Field(default=0.7)
+    max_tokens: int = Field(default=4096)
+    
+    @property
+    def _llm_type(self) -> str:
+        return "gemini"
+    
     def _call(
         self,
         prompt: str,
@@ -57,27 +102,26 @@ class GeminiLLM(LLM):
                 messages=[{"role": "user", "content": prompt}],
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
-                api_key=os.getenv("GOOGLE_API_KEY")
+                **kwargs
             )
             return response.choices[0].message.content
         except Exception as e:
-            log.error(f"LiteLLM call failed: {e}")
-            raise
+            raise ValueError(f"LiteLLM call failed: {e}")
 
-# --- Supabase Client ---
-SUPABASE_URL: str = os.getenv("SUPABASE_URL")
-SUPABASE_KEY: str = os.getenv("SUPABASE_KEY")
-supabase: Client = None
+# Initialize Supabase
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
-    log.warning("⚠️ Supabase URL/Key not found. Database functions will be disabled.")
+    log.warning("⚠️ SUPABASE_URL or SUPABASE_KEY not found. Database features will fail.")
+    supabase = None
 else:
-    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-    log.info("✅ Supabase client initialized.")
-
-# --- Gemini Client ---
-gemini_model = None
-crew_llm = None
+    try:
+        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        log.info("✅ Supabase client initialized")
+    except Exception as e:
+        log.error(f"❌ Failed to initialize Supabase: {e}")
+        supabase = None
 
 # Configure google-generativeai (direct SDK - for non-CrewAI usage)
 genai.configure(api_key=GEMINI_API_KEY)

@@ -120,7 +120,7 @@ export default function Dashboard({ setSelectedJob, onTriggerJobSearch, isSearch
               <div className={`flex ${selectedJobIds.size === 0 ? 'flex-col sm:flex-row' : 'flex-row'} justify-between items-center gap-4 mb-6`}>
                   {selectedJobIds.size === 0 ? (
                       <>
-                          <div className="flex-1 w-full sm:max-w-xs">
+                          <div className="flex-1 w-full sm:max-w-sm md:max-w-md lg:max-w-lg">
                               <div className="relative flex items-center">
                                   <span className="absolute inset-y-0 left-0 flex items-center pl-4">
                                       <Search className="w-5 h-5 text-slate-400" />
@@ -184,7 +184,8 @@ export default function Dashboard({ setSelectedJob, onTriggerJobSearch, isSearch
                                   className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-blue-700 bg-blue-100 border border-blue-200 rounded-md hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                   <Brain className="w-4 h-4" />
-                                  Analyze ({jobsToAnalyzeCount})
+                                  <span className="sm:hidden">Analyze ({jobsToAnalyzeCount})</span>
+                                  <span className="hidden sm:inline">Analyze ({jobsToAnalyzeCount})</span>
                               </button>
                               <button
                                   onClick={onTriggerJobSearch}
@@ -192,7 +193,8 @@ export default function Dashboard({ setSelectedJob, onTriggerJobSearch, isSearch
                                   className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-white bg-sky-600 rounded-md hover:bg-sky-700 transition-all disabled:bg-sky-300"
                               >
                                   {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                                  Find Jobs
+                                  <span className="sm:hidden">Find</span>
+                                  <span className="hidden sm:inline">Find Jobs</span>
                               </button>
                           </div>
                       </>

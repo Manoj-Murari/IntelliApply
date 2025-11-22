@@ -1,18 +1,27 @@
-# core/ai_crew.py
+# intelliapply-api/core/ai_crew.py
 import logging
 from crewai import Agent, Task, Crew, Process
 from config import crew_llm
+from core.schemas import OptimizedResumeOutput
 
 log = logging.getLogger(__name__)
 
-def run_resume_crew(job_description: str, resume_context: str) -> str:
+def run_resume_crew(job_description: str, resume_context: str, profile_data: dict) -> str:
     if not crew_llm:
         log.error("CrewAI LLM not configured.")
-        return "Error: AI Crew is not configured."
+        return '{"error": "AI Crew is not configured."}'
 
     log.info("Starting Resume Optimization Crew...")
+    
+    contact_info_block = f"""
+    USER'S REAL CONTACT INFO (Use this for the JSON):
+    Name: {profile_data.get('full_name')}
+    Email: {profile_data.get('email')}
+    Phone: {profile_data.get('phone')}
+    LinkedIn: {profile_data.get('linkedin_url')}
+    Portfolio: {profile_data.get('portfolio_url')}
+    """
 
-    # --- Agents ---
     resume_analyzer = Agent(
         role='Resume Analyst',
         goal='Analyze the provided resume and extract key skills, experiences, and projects.',
@@ -38,7 +47,7 @@ def run_resume_crew(job_description: str, resume_context: str) -> str:
     
     resume_optimizer = Agent(
         role='Professional Resume Optimizer',
-        goal='Rewrite the resume to align perfectly with the job description in ATS-friendly Markdown format.',
+        goal='Rewrite the resume to align perfectly with the job description in a structured JSON format.',
         backstory=(
             "You are a world-class career coach and resume writer who crafts optimized resumes that get candidates hired."
         ),
@@ -47,10 +56,9 @@ def run_resume_crew(job_description: str, resume_context: str) -> str:
         allow_delegation=False,
     )
 
-    # --- Tasks ---
     task_analyze_resume = Task(
         description=(
-            "Analyze this resume and extract all skills, experiences, and projects:\n\n"
+            "Analyze this resume text and extract all skills, experiences, and projects:\n\n"
             "{resume_text}"
         ),
         expected_output='A structured summary of skills, experience, and projects.',
@@ -68,19 +76,27 @@ def run_resume_crew(job_description: str, resume_context: str) -> str:
 
     task_optimize_resume = Task(
         description=(
-            "Using the analyses provided, rewrite this resume to align with the job description. "
-            "Use keywords from the job analysis. Output the complete resume in Markdown format.\n\n"
-            "Original Resume:\n{resume_text}"
+            f"Using the analyses provided, rewrite this resume to align with the job description. "
+            "Use keywords from the job analysis. Output ONLY a valid JSON object matching the Pydantic schema.\n\n"
+            f"{contact_info_block}\n\n"
+            "Original Resume Text:\n{resume_text}"
         ),
         expected_output=(
-            "A complete, optimized resume in Markdown format with sections: "
-            "Name/Contact, Professional Summary, Skills, Experience, Projects, Education."
+            "A single, valid JSON object that strictly follows the `OptimizedResumeOutput` Pydantic schema. "
+            "The JSON object must have two top-level keys: 'resume' and 'rationale'.\n"
+            "1. For the 'resume' key (which is a `ResumeData` object):"
+            "   - Use the 'USER'S REAL CONTACT INFO' provided above for: name, phone, email, linkedin, and portfolio."
+            "   - For 'github', find the full GitHub URL in the 'Original Resume Text'. If not found, set it to null."
+            "   - For 'summary', 'skills', 'experience', and 'projects', generate them by optimizing the 'Original Resume Text' based on the job description analysis."
+            "2. For the 'rationale' key (which is a string):"
+            "   - Provide a detailed, point-by-point explanation of *why* you made the changes to the summary, experience, and projects."
+            "   - Reference specific keywords from the job description analysis in your reasoning."
         ),
         agent=resume_optimizer,
         context=[task_analyze_resume, task_analyze_job],
+        output_pydantic=OptimizedResumeOutput
     )
     
-    # Create crew
     crew = Crew(
         agents=[resume_analyzer, job_analyzer, resume_optimizer],
         tasks=[task_analyze_resume, task_analyze_job, task_optimize_resume],
@@ -98,25 +114,14 @@ def run_resume_crew(job_description: str, resume_context: str) -> str:
         result = crew.kickoff(inputs=inputs)
         log.info("Crew completed successfully.")
         
-        # Extract the final output from CrewOutput object
-        if hasattr(result, 'raw'):
-            final_output = result.raw
-        elif hasattr(result, 'output'):
-            final_output = result.output
-        else:
-            final_output = str(result)
+        if not result:
+            raise Exception("Crew returned no result.")
+            
+        final_json_string = result.model_dump_json()
         
-        # Clean up the markdown code fences if present
-        if isinstance(final_output, str):
-            final_output = final_output.strip()
-            if final_output.startswith('```markdown'):
-                final_output = final_output[len('```markdown'):].strip()
-            if final_output.endswith('```'):
-                final_output = final_output[:-3].strip()
-        
-        log.info(f"Final output length: {len(final_output)} characters")
-        return final_output if final_output else "Error: Empty result from crew."
+        log.info(f"Final output length: {len(final_json_string)} characters")
+        return final_json_string
         
     except Exception as e:
         log.error(f"CrewAI kickoff failed: {e}", exc_info=True)
-        return f"Error: The AI crew failed to process the request. {str(e)}"
+        return f'{{"error": "The AI crew failed to process the request. {str(e)}"}}'

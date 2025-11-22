@@ -1,15 +1,15 @@
-# main.py
 import asyncio
 import os
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, File, Body, Response
 from arq import create_pool
 from arq.worker import Worker
 from arq.connections import RedisSettings
 from pydantic import BaseModel, HttpUrl
 from typing import List, Optional
 from datetime import datetime
+from fastapi.middleware.cors import CORSMiddleware # Moved to top-level imports
 
 # --- Local Imports ---
 from config import is_ready, supabase
@@ -21,7 +21,12 @@ from core.ai_analysis import (
 )
 from core.auth import get_current_user
 from core.ai_crew import run_resume_crew
-from arq_worker import WorkerSettings
+from arq_worker import WorkerSettings # Assumes arq_worker.py exists
+from core.parser import parse_resume_to_json
+from core.intelligence import analyze_gaps
+from core.generator import tailor_resume, write_cover_letter
+from core.renderer import render_resume_pdf, render_cover_letter_pdf
+from core.schemas import GapAnalysisRequest, GapAnalysisResponse, CoverLetterRequest, CoverLetterResponse
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -78,14 +83,11 @@ app = FastAPI(
 )
 
 # --- CORS MIDDLEWARE ---
-from fastapi.middleware.cors import CORSMiddleware
-# --- THIS IS THE FINAL CHANGE ---
 origins = [
     "http://localhost:5173",
     "http://localhost:5174",
-    "https://ai-job-scraper-zeta.vercel.app" # <-- YOUR LIVE VERCEL URL
+    "https://ai-job-scraper-zeta.vercel.app"
 ]
-# --- END OF CHANGE ---
 
 app.add_middleware(
     CORSMiddleware,
@@ -133,6 +135,11 @@ class AIRequest(BaseModel):
     company: str | None = None
     title: str | None = None
 
+class ResumeFromTextRequest(BaseModel):
+    profile_id: str
+    job_description: str
+    resume_context: str 
+
 class JobStatusUpdate(BaseModel):
     status: str
 
@@ -151,8 +158,9 @@ def get_profile_context(profile_id: str, user_id: str):
     if not is_ready():
         raise HTTPException(status_code=503, detail="DB client not configured.")
     try:
+        # Select all fields
         profile_res = supabase.table("profiles") \
-            .select("resume_context, experience_level") \
+            .select("*") \
             .eq("id", profile_id) \
             .eq("user_id", user_id) \
             .single().execute()
@@ -313,9 +321,9 @@ async def generate_cover_letter(request: AIRequest, user_id: str = Depends(get_c
 async def generate_optimized_resume(request: OptimizedResumeRequest, user_id: str = Depends(get_current_user)):
     log.info(f"API: Received resume optimization request for job {request.job_id} from user {user_id}")
     try:
-        # 1. Get Profile Context (verifies user)
-        profile = get_profile_context(request.profile_id, user_id)
-        resume_context = profile.get("resume_context")
+        # Fetch full profile data
+        profile_data = get_profile_context(request.profile_id, user_id)
+        resume_context = profile_data.get("resume_context")
 
         # 2. Get Job Description (verifies user)
         job_res = supabase.table("jobs") \
@@ -335,10 +343,12 @@ async def generate_optimized_resume(request: OptimizedResumeRequest, user_id: st
         # 3. Run the CrewAI task
         log.info("Handing off to AI Crew...")
         
+        # Pass profile_data to the crew
         optimized_resume = await asyncio.to_thread(
             run_resume_crew, 
             job_description=job_description, 
-            resume_context=resume_context
+            resume_context=resume_context,
+            profile_data=profile_data
         )
         log.info("AI Crew finished. Returning result.")
         
@@ -353,7 +363,144 @@ async def generate_optimized_resume(request: OptimizedResumeRequest, user_id: st
     except Exception as e:
         log.error(f"Failed to generate optimized resume: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- NEW ENDPOINT for Feature 2 ---
+@app.post("/api/v1/ai/generate-resume-from-text")
+async def generate_resume_from_text(request: ResumeFromTextRequest, user_id: str = Depends(get_current_user)):
+    log.info(f"API: Received resume-from-text request for profile {request.profile_id} from user {user_id}")
+    try:
+        # Fetch full profile data for user verification and context if needed
+        profile_data = get_profile_context(request.profile_id, user_id)
+        
+        # 2. Use the provided text
+        resume_context = request.resume_context
+        job_description = request.job_description
+
+        if not resume_context or not job_description:
+            raise HTTPException(status_code=400, detail="Resume context and job description are required.")
+
+        # 3. Run the CrewAI task
+        log.info("Handing off to AI Crew...")
+        
+        # Pass profile_data to the crew
+        optimized_resume = await asyncio.to_thread(
+            run_resume_crew, 
+            job_description=job_description, 
+            resume_context=resume_context,
+            profile_data=profile_data
+        )
+        log.info("AI Crew finished. Returning result.")
+        
+        if optimized_resume.startswith("Error:"):
+            raise Exception(optimized_resume)
+            
+        return {"optimized_resume": optimized_resume}
+        
+    except HTTPException as he:
+        log.error(f"HTTP exception: {he.detail}")
+        raise he
+    except Exception as e:
+        log.error(f"Failed to generate optimized resume from text: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 # --- END NEW ENDPOINT ---
+
+# --- RESUME BUILDER V2 ENDPOINTS ---
+
+@app.post("/api/v1/resume/ingest")
+async def ingest_resume(file: UploadFile = File(...)):
+    if file.content_type != "application/pdf":
+        raise HTTPException(400, "Only PDFs allowed.")
+
+    content = await file.read()
+
+    try:
+        parsed_data = parse_resume_to_json(content)
+    except Exception as e:
+        raise HTTPException(500, f"Parser failed: {e}")
+
+    public_url = ""
+    try:
+        path = f"resumes/{file.filename}"
+        # Using upsert to avoid errors during testing re-uploads
+        supabase.storage.from_("raw_resumes").upload(path, content, {"upsert": "true"})
+        public_url = supabase.storage.from_("raw_resumes").get_public_url(path)
+    except Exception as e:
+        logging.error(f"Storage upload failed: {e}")
+
+    try:
+        # We use a dummy user_id for now if not authenticated, or we could require auth
+        # For now, let's just return the data without saving to master_resumes if we don't have a user context here easily
+        # Or we can assume this is a protected endpoint if we add Depends(get_current_user)
+        # Let's keep it simple and just return data for the frontend state
+        
+        return {"status": "success", "data": parsed_data, "file_url": public_url}
+    except Exception as e:
+        raise HTTPException(500, f"Processing failed: {e}")
+
+@app.post("/api/v1/resume/analyze-gaps", response_model=GapAnalysisResponse)
+async def analyze_resume_gaps(request: GapAnalysisRequest = Body(...)):
+    if not request.job_description or len(request.job_description) < 50:
+        raise HTTPException(400, "Job description is too short.")
+
+    try:
+        analysis = analyze_gaps(request.resume_data, request.job_description)
+        return analysis
+    except Exception as e:
+        logging.error(f"Gap Analysis Error: {e}")
+        raise HTTPException(500, "Failed to analyze gaps.")
+
+@app.post("/api/v1/resume/generate-tailored")
+async def generate_tailored_resume_endpoint(
+    resume_data: dict = Body(...),
+    job_description: str = Body(...),
+    gap_answers: dict = Body(default=None)
+):
+    try:
+        tailored_json = tailor_resume(resume_data, job_description, gap_answers)
+        return tailored_json
+    except Exception as e:
+        logging.error(f"Generation Error: {e}")
+        raise HTTPException(500, f"Generation failed: {e}")
+
+@app.post("/api/v1/resume/render-pdf")
+async def render_pdf_endpoint(resume_data: dict = Body(...)):
+    """
+    Converts Resume JSON -> PDF (Auto-switching between Standard and Compact).
+    """
+    try:
+        pdf_bytes = render_resume_pdf(resume_data)
+        return Response(content=pdf_bytes, media_type="application/pdf")
+    except Exception as e:
+        logging.error(f"PDF Rendering Error: {e}")
+        raise HTTPException(500, f"Failed to render PDF: {e}")
+
+@app.post("/api/v1/resume/generate-cover-letter", response_model=CoverLetterResponse)
+async def generate_cover_letter_endpoint(request: CoverLetterRequest = Body(...)):
+    if not request.job_description or len(request.job_description) < 50:
+        raise HTTPException(400, "Job description is too short.")
+        
+    try:
+        letter_text = write_cover_letter(request.resume_data, request.job_description)
+        return {"cover_letter_text": letter_text}
+    except Exception as e:
+        logging.error(f"Cover Letter Error: {e}")
+        raise HTTPException(500, "Failed to generate cover letter.")
+
+@app.post("/api/v1/resume/render-cover-letter-pdf")
+async def render_cover_letter_pdf_endpoint(
+    resume_data: dict = Body(...),
+    cover_letter_text: str = Body(...)
+):
+    """
+    Converts Cover Letter Text + Resume Header -> PDF.
+    """
+    try:
+        pdf_bytes = render_cover_letter_pdf(resume_data, cover_letter_text)
+        return Response(content=pdf_bytes, media_type="application/pdf")
+    except Exception as e:
+        logging.error(f"Cover Letter PDF Error: {e}")
+        raise HTTPException(500, f"Failed to render Cover Letter PDF: {e}")
+
 
 # --- JOB MUTATION ENDPOINTS ---
 
@@ -378,8 +525,8 @@ async def update_job_details(job_id: int, request: JobDetailsUpdate, user_id: st
     try:
         update_data = request.model_dump(exclude_unset=True) 
         if not update_data:
-             raise HTTPException(status_code=400, detail="No data provided.")
-             
+            raise HTTPException(status_code=400, detail="No data provided.")
+            
         response = supabase.table("jobs") \
             .update(update_data) \
             .eq("id", job_id) \
@@ -398,7 +545,7 @@ async def delete_jobs(request: JobDeleteRequest, user_id: str = Depends(get_curr
     try:
         job_ids = request.job_ids
         if not job_ids:
-             raise HTTPException(status_code=400, detail="No job IDs provided.")
+            raise HTTPException(status_code=400, detail="No job IDs provided.")
 
         response = supabase.table("jobs") \
             .delete() \

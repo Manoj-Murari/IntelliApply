@@ -17,3 +17,12 @@ litellm
 langchain-google-genai
 langchain-core
 
+# --- New Tika Dependency ---
+
+
+# --- New Phase 1 Dependencies ---
+pdfplumber
+python-docx
+pymupdf
+xhtml2pdf
+jinja2
