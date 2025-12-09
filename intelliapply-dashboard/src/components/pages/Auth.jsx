@@ -15,9 +15,10 @@ export default function Auth() {
                     appearance={{ theme: ThemeSupa }}
                     // --- THIS IS THE FIX ---
                     // This array now ONLY includes 'google'
-                    providers={['google']} 
+                    providers={['google']}
                     // --- END OF FIX ---
                     theme="light"
+                    redirectTo={window.location.origin}
                 />
             </div>
         </div>

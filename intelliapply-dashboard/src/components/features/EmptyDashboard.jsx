@@ -1,26 +1,28 @@
+
 import React from 'react';
-import { Search, Inbox } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useStore } from '../../lib/store';
 
 export default function EmptyDashboard() {
-  const setView = useStore(state => state.setView);
+  const openAddJobModal = useStore((state) => state.openAddJobModal);
 
   return (
-    <div className="text-center p-12 bg-white/50 border-2 border-dashed border-slate-300 rounded-lg">
-      <Inbox className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-      <h3 className="text-xl font-semibold text-slate-700 mb-2">
-        Your Job Inbox is Empty
+    <div className="flex flex-col items-center justify-center p-12 text-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 min-h-[400px]">
+      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6">
+        <Plus className="w-8 h-8 text-blue-600" />
+      </div>
+      <h3 className="text-xl font-semibold text-slate-800 mb-2">
+        Track Your First Application
       </h3>
-      <p className="text-slate-500 mb-6 max-w-md mx-auto">
-        You don't have any saved job searches yet. Create a search to let the
-        AI find and filter new jobs for you.
+      <p className="max-w-md text-slate-500 mb-8">
+        Add a job you've applied to and use our AI to generate a tailored resume and cover letter.
       </p>
       <button
-        onClick={() => setView('searches')}
-        className="flex items-center justify-center gap-2 px-5 py-2.5 font-semibold text-white bg-sky-600 rounded-md hover:bg-sky-700 transition-all mx-auto"
+        onClick={openAddJobModal}
+        className="flex items-center gap-2 px-6 py-3 text-base font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
       >
-        <Search className="w-5 h-5" />
-        Create Your First Search
+        <Plus className="w-5 h-5" />
+        Add Manual Job
       </button>
     </div>
   );

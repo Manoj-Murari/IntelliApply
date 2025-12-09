@@ -26,8 +26,7 @@ export default function MainDashboard() {
   const {
     selectedJob, setSelectedJob,
     fetchAllData, subscribeToJobs, unsubscribeFromJobs,
-    handleTriggerJobSearch,
-    isSearching,
+    // handleTriggerJobSearch, isSearching, // Removed
     loading,
     isTailorModalOpen, openTailorModal, closeTailorModal,
     isCoverLetterModalOpen, openCoverLetterModal, closeCoverLetterModal,
@@ -37,7 +36,7 @@ export default function MainDashboard() {
     modalState, closeConfirmationModal,
     notifications, removeNotification,
     isWelcomeModalOpen, closeWelcomeModal,
-    isSearchModalOpen, closeSearchModal,
+    // isSearchModalOpen, closeSearchModal, // Removed
     isAddJobModalOpen, closeAddJobModal,
     allJobs, profiles, searches,
     activeProfileId,
@@ -76,9 +75,9 @@ export default function MainDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800">
-      
+
       <Header />
-      
+
       <main className="w-full p-4 sm:p-6 lg:p-8">
         <Routes>
           <Route
@@ -86,8 +85,8 @@ export default function MainDashboard() {
             element={
               <Dashboard
                 setSelectedJob={setSelectedJob}
-                onTriggerJobSearch={handleTriggerJobSearch}
-                isSearching={isSearching}
+              // onTriggerJobSearch={handleTriggerJobSearch} // Removed
+              // isSearching={isSearching} // Removed
               />
             }
           />
@@ -124,7 +123,7 @@ export default function MainDashboard() {
           <Route path="*" element={<Navigate to="/app" replace />} />
         </Routes>
       </main>
-      
+
       <JobDetailsPanel
         job={selectedJob}
         setSelectedJob={setSelectedJob}
@@ -134,11 +133,11 @@ export default function MainDashboard() {
         onOpenOptimizedResumeModal={openOptimizedResumeModal}
         activeProfile={activeProfile}
       />
-      
+
       <WelcomeModal isOpen={isWelcomeModalOpen} onClose={closeWelcomeModal} />
-      <SearchModal isOpen={isSearchModalOpen} onClose={closeSearchModal} />
+      {/* <SearchModal isOpen={isSearchModalOpen} onClose={closeSearchModal} /> Removed */}
       <AddJobModal isOpen={isAddJobModalOpen} onClose={closeAddJobModal} />
-      
+
       <AITailoringModal isOpen={isTailorModalOpen} onClose={closeTailorModal} job={selectedJob} profile={activeProfile} />
       <AICoverLetterModal isOpen={isCoverLetterModalOpen} onClose={closeCoverLetterModal} job={selectedJob} profile={activeProfile} />
       <AIInterviewPrepModal isOpen={isInterviewPrepModalOpen} onClose={closeInterviewPrepModal} job={selectedJob} profile={activeProfile} />
@@ -151,10 +150,10 @@ export default function MainDashboard() {
         jobUrl={selectedJob?.job_url}
       />
       <ConfirmationModal isOpen={modalState.isOpen} onClose={closeConfirmationModal} onConfirm={modalState.onConfirm} title={modalState.title} message={modalState.message} />
-      
+
       <div aria-live="assertive" className="fixed inset-0 flex items-end px-4 py-6 pointer-events-none sm:p-6 sm:items-end">
         <div className="w-full flex flex-col items-center space-y-4 sm:items-end">
-          {notifications.map(notification => ( <Toast key={notification.id} notification={notification} onDismiss={removeNotification} /> ))}
+          {notifications.map(notification => (<Toast key={notification.id} notification={notification} onDismiss={removeNotification} />))}
         </div>
       </div>
     </div>

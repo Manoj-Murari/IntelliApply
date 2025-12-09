@@ -4,7 +4,7 @@ import { User, Search as SearchIcon, Settings as SettingsIcon } from 'lucide-rea
 
 // Import the components that will live inside the tabs
 import Profiles from '../features/Profiles';
-import Searches from '../features/Searches';
+// import Searches from '../features/Searches'; // Deprecated
 
 // TabButton component (local to this file)
 function TabButton({ icon, label, isActive, onClick }) {
@@ -12,11 +12,10 @@ function TabButton({ icon, label, isActive, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors ${
-        isActive
-          ? 'bg-sky-100 text-sky-700'
-          : 'text-slate-500 hover:bg-slate-100'
-      }`}
+      className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors ${isActive
+        ? 'bg-sky-100 text-sky-700'
+        : 'text-slate-500 hover:bg-slate-100'
+        }`}
     >
       <Icon className="w-4 h-4" />
       {label}
@@ -55,12 +54,7 @@ export default function Settings() {
           isActive={subView === 'profiles'}
           onClick={() => setSubView('profiles')}
         />
-        <TabButton
-          icon={SearchIcon}
-          label="Job Searches"
-          isActive={subView === 'searches'}
-          onClick={() => setSubView('searches')}
-        />
+        {/* Searches tab deprecated */}
       </div>
 
       {/* The Tab Content */}

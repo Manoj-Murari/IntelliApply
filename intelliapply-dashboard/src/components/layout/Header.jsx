@@ -25,8 +25,7 @@ function MobileNavLink({ to, children, onClick }) {
       end={to === '/app'}
       onClick={onClick}
       className={({ isActive }) =>
-        `flex items-center gap-3 w-full text-left rounded-md p-3 text-base font-medium ${
-          isActive ? 'bg-sky-100 text-sky-700' : 'text-slate-700 hover:bg-slate-100'
+        `flex items-center gap-3 w-full text-left rounded-md p-3 text-base font-medium ${isActive ? 'bg-sky-100 text-sky-700' : 'text-slate-700 hover:bg-slate-100'
         }`
       }
     >
@@ -68,7 +67,7 @@ function Avatar({ email }) {
 }
 
 export default function Header() {
-  const isSearching = useStore((state) => state.isSearching);
+  // const isSearching = useStore((state) => state.isSearching); // Removed scraping
   const handleSignOut = useStore((state) => state.handleSignOut);
   const profiles = useStore((state) => state.profiles);
   const activeProfileId = useStore((state) => state.activeProfileId);
@@ -131,8 +130,7 @@ export default function Header() {
                   to="/app"
                   end
                   className={({ isActive }) =>
-                    `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isActive ? 'bg-sky-100 text-sky-700' : 'text-slate-600 hover:bg-slate-100'
+                    `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive ? 'bg-sky-100 text-sky-700' : 'text-slate-600 hover:bg-slate-100'
                     }`
                   }
                 >
@@ -143,8 +141,7 @@ export default function Header() {
                 <NavLink
                   to="/app/library"
                   className={({ isActive }) =>
-                    `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isActive ? 'bg-sky-100 text-sky-700' : 'text-slate-600 hover:bg-slate-100'
+                    `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive ? 'bg-sky-100 text-sky-700' : 'text-slate-600 hover:bg-slate-100'
                     }`
                   }
                 >
@@ -155,8 +152,7 @@ export default function Header() {
                 <NavLink
                   to="/app/tracker"
                   className={({ isActive }) =>
-                    `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isActive ? 'bg-sky-100 text-sky-700' : 'text-slate-600 hover:bg-slate-100'
+                    `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive ? 'bg-sky-100 text-sky-700' : 'text-slate-600 hover:bg-slate-100'
                     }`
                   }
                 >
@@ -167,8 +163,7 @@ export default function Header() {
                 <NavLink
                   to="/app/analytics"
                   className={({ isActive }) =>
-                    `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isActive ? 'bg-sky-100 text-sky-700' : 'text-slate-600 hover:bg-slate-100'
+                    `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive ? 'bg-sky-100 text-sky-700' : 'text-slate-600 hover:bg-slate-100'
                     }`
                   }
                 >
@@ -179,8 +174,7 @@ export default function Header() {
                 <NavLink
                   to="/app/maker"
                   className={({ isActive }) =>
-                    `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isActive ? 'bg-sky-100 text-sky-700' : 'text-slate-600 hover:bg-slate-100'
+                    `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive ? 'bg-sky-100 text-sky-700' : 'text-slate-600 hover:bg-slate-100'
                     }`
                   }
                 >
@@ -218,7 +212,7 @@ export default function Header() {
                 </div>
               )}
 
-              {isSearching && (
+              {false && (
                 <div className="hidden sm:flex items-center gap-2 text-sm font-semibold text-sky-600">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>Searching...</span>
