@@ -70,9 +70,11 @@ export const createProfileSlice = (set, get) => ({
             if (get().profiles.length === 1 && savedData) {
                 set({ activeProfileId: savedData.id });
             }
+            return savedData;
         } catch (error) {
             get().addNotification(`Error saving profile: ${error.message}`, 'error');
             set({ loading: false });
+            throw error;
         }
     },
 

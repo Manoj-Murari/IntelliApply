@@ -1,0 +1,44 @@
+/* Google Fonts Import */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+    /* Colors */
+    --color-paper: #F9F8F6;
+    --color-surface: #FFFFFF;
+    --color-ink-primary: #1F1F1F;
+    --color-ink-secondary: #6B6B6B;
+    --color-stone: #E6E4DF;
+    --color-stone-light: #E5E5E5;
+    --color-terracotta: #D97757;
+    --color-terracotta-dark: #c56a4c;
+
+    /* Typography */
+    --font-serif: "Merriweather", serif;
+    --font-sans: "Inter", sans-serif;
+
+    /* Border Radius */
+    --radius-lg: 0.5rem;
+    --radius-md: 0.375rem;
+    --radius-sm: 0.25rem;
+}
+
+/* Base Styles */
+body {
+    background-color: var(--color-paper);
+    color: var(--color-ink-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--font-serif);
+    color: var(--color-ink-primary);
+}

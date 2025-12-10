@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import { resumeParserService } from '../../../services/resumeParserService';
+import { ragService } from '../../../services/ragService';
+import { jsPDF } from 'jspdf';
 
 export const useResumeStore = create((set, get) => ({
     step: 1,
@@ -11,11 +12,11 @@ export const useResumeStore = create((set, get) => ({
     error: null,
 
     // Data
-    resumeData: null,
+    resumeData: null, // This is now the extracted text
     jobDescription: "",
     gapAnalysis: null,
     gapAnswers: {},
-    tailoredResume: null,
+    tailoredResume: null, // Markdown output
 
     // PDF URLs
     resumePdfUrl: null,
@@ -32,19 +33,11 @@ export const useResumeStore = create((set, get) => ({
     // Actions
     uploadResume: async (file) => {
         set({ isUploading: true, error: null });
-        const formData = new FormData();
-        formData.append("file", file);
-
         try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/resume/ingest`, {
-                method: 'POST',
-                body: formData,
-            });
-
-            if (!response.ok) throw new Error("Upload failed");
-
-            const data = await response.json();
-            set({ resumeData: data.data, step: 2 });
+            const text = await resumeParserService.parseFile(file);
+            // Simulate 'ingest' by just setting the text
+            const resumeDataObj = { text, filename: file.name };
+            set({ resumeData: resumeDataObj, file, step: 2 });
         } catch (err) {
             set({ error: err.message });
         } finally {
@@ -57,16 +50,25 @@ export const useResumeStore = create((set, get) => ({
         const { resumeData, jobDescription } = get();
 
         try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/resume/analyze-gaps`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ resume_data: resumeData, job_description: jobDescription }),
-            });
+            // Use Client-Side RAG Service
+            // Context constructed from single resume + JD
+            const context = `RESUME:\n${resumeData.text}\n\nJOB DESCRIPTION:\n${jobDescription}`;
+            const analysis = await ragService.analyzeGaps(context);
 
-            if (!response.ok) throw new Error("Analysis failed");
+            // Transform to UI expected format if needed
+            // UI expects: { match_score, gaps: [{ missing_skill, context, question }] }
+            // ragService stub returns simple object. Let's adapt it here or in service.
+            // For now, mapping stub to UI format:
+            const mappedAnalysis = {
+                match_score: 85, // Mock score
+                gaps: analysis.missingSkills.map(skill => ({
+                    missing_skill: skill,
+                    context: "Identified based on job requirements.",
+                    question: analysis.question || `Do you have experience with ${skill}?`
+                }))
+            };
 
-            const data = await response.json();
-            set({ gapAnalysis: data, step: 3 });
+            set({ gapAnalysis: mappedAnalysis, step: 3 });
         } catch (err) {
             set({ error: err.message });
         } finally {
@@ -79,32 +81,32 @@ export const useResumeStore = create((set, get) => ({
         const { resumeData, jobDescription, gapAnswers } = get();
 
         try {
-            // 1. Generate JSON
-            const response = await fetch(`${API_BASE_URL}/api/v1/resume/generate-tailored`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    resume_data: resumeData,
-                    job_description: jobDescription,
-                    gap_answers: gapAnswers
-                }),
+            const context = `RESUME:\n${resumeData.text}\n\nJOB DESCRIPTION:\n${jobDescription}`;
+            const markdownResume = await ragService.generateResume(context, gapAnswers);
+
+            set({ tailoredResume: markdownResume });
+
+            // Render PDF client-side
+            const doc = new jsPDF();
+            // Simple split text to fit page
+            const splitText = doc.splitTextToSize(markdownResume, 180);
+            let y = 10;
+
+            // Basic Markdown-ish rendering (bold headers)
+            splitText.forEach(line => {
+                if (y > 280) { doc.addPage(); y = 10; } // pagination
+                if (line.startsWith('#')) {
+                    doc.setFont(undefined, 'bold');
+                    doc.text(line.replace(/#/g, '').trim(), 10, y);
+                    doc.setFont(undefined, 'normal');
+                } else {
+                    doc.text(line, 10, y);
+                }
+                y += 7;
             });
 
-            if (!response.ok) throw new Error("Generation failed");
-            const tailoredJson = await response.json();
-            set({ tailoredResume: tailoredJson });
-
-            // 2. Render PDF
-            const pdfResponse = await fetch(`${API_BASE_URL}/api/v1/resume/render-pdf`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(tailoredJson),
-            });
-
-            if (!pdfResponse.ok) throw new Error("PDF Rendering failed");
-
-            const blob = await pdfResponse.blob();
-            const url = URL.createObjectURL(blob);
+            const pdfBlob = doc.output('blob');
+            const url = URL.createObjectURL(pdfBlob);
             set({ resumePdfUrl: url, step: 4 });
 
         } catch (err) {
@@ -119,34 +121,18 @@ export const useResumeStore = create((set, get) => ({
         const { tailoredResume, jobDescription } = get();
 
         try {
-            // 1. Generate Text
-            const response = await fetch(`${API_BASE_URL}/api/v1/resume/generate-cover-letter`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    resume_data: tailoredResume,
-                    job_description: jobDescription
-                }),
-            });
+            // Mock Cover Letter Generation
+            const clText = `Dear Hiring Manager,\n\nI am excited to apply for this position...\n\n(Generated based on: ${jobDescription.substring(0, 50)}...)\n\nSincerely,\nCandidate`;
 
-            if (!response.ok) throw new Error("Cover Letter failed");
-            const data = await response.json();
-            set({ coverLetterText: data.cover_letter_text });
+            set({ coverLetterText: clText });
 
-            // 2. Render PDF
-            const pdfResponse = await fetch(`${API_BASE_URL}/api/v1/resume/render-cover-letter-pdf`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    resume_data: tailoredResume,
-                    cover_letter_text: data.cover_letter_text
-                }),
-            });
+            // Render PDF
+            const doc = new jsPDF();
+            const splitText = doc.splitTextToSize(clText, 180);
+            doc.text(splitText, 10, 10);
 
-            if (!pdfResponse.ok) throw new Error("CL PDF failed");
-
-            const blob = await pdfResponse.blob();
-            const url = URL.createObjectURL(blob);
+            const pdfBlob = doc.output('blob');
+            const url = URL.createObjectURL(pdfBlob);
             set({ coverLetterPdfUrl: url });
 
         } catch (err) {

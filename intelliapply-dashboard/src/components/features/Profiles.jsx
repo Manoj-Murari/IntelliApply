@@ -6,17 +6,8 @@ import {
 } from 'lucide-react';
 import { useStore } from '../../lib/store';
 // --- NEW IMPORTS (for Feature 1) ---
-import * as pdfjsLib from 'pdfjs-dist/build/pdf';
-import mammoth from 'mammoth/mammoth.browser';
-
-// --- NEW PDF.js WORKER SETUP ---
-// We need to tell pdf.js where to find its worker script.
-// This is a standard setup for using it with bundlers like Vite.
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
-// --- END NEW ---
+import { resumeParserService } from '../../services/resumeParserService';
+import { storageService } from '../../services/storageService';
 
 const InputField = ({ id, name, label, placeholder, value, icon, type = "text", onChange }) => {
   const Icon = icon;
@@ -42,8 +33,8 @@ function ProfileForm({ profile: initialProfile, onSave, onCancel, loading }) {
   });
 
   // --- MODIFIED (Feature 1) ---
-  // This state is now just for showing the file name in the UI
   const [fileName, setFileName] = useState('');
+  const [pendingFile, setPendingFile] = useState(null);
   const addNotification = useStore(state => state.addNotification);
 
   const handleChange = (e) => {
@@ -51,87 +42,50 @@ function ProfileForm({ profile: initialProfile, onSave, onCancel, loading }) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // --- NEW (Feature 1): Helper to read file as ArrayBuffer ---
-  const readFileAsArrayBuffer = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = (error) => reject(error);
-      reader.readAsArrayBuffer(file);
-    });
-  };
-
-  // --- NEW (Feature 1): PDF text extraction logic ---
-  const extractTextFromPdf = async (file) => {
-    try {
-      const arrayBuffer = await readFileAsArrayBuffer(file);
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      let allText = '';
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        allText += textContent.items.map(item => item.str).join(' ') + '\n';
-      }
-      return allText;
-    } catch (error) {
-      console.error('Error extracting PDF text:', error);
-      throw new Error('Failed to read PDF file.');
-    }
-  };
-
-  // --- NEW (Feature 1): DOCX text extraction logic ---
-  const extractTextFromDocx = async (file) => {
-    try {
-      const arrayBuffer = await readFileAsArrayBuffer(file);
-      const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
-      return result.value;
-    } catch (error) {
-      console.error('Error extracting DOCX text:', error);
-      throw new Error('Failed to read DOCX file.');
-    }
-  };
-
-  // --- MODIFIED (Feature 1): handleFileChange now extracts text ---
+  // --- MODIFIED (Feature 1): handleFileChange uses service ---
   const handleFileChange = async (e) => {
     if (!e.target.files || e.target.files.length === 0) return;
 
     const file = e.target.files[0];
-    const fileType = file.type;
     setFileName(file.name);
+    setPendingFile(file);
 
     // Show loading notification
     addNotification('Reading resume file...', 'info');
 
     try {
-      let extractedText = '';
-      if (fileType === 'application/pdf') {
-        extractedText = await extractTextFromPdf(file);
-      } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.name.endsWith('.docx')) {
-        extractedText = await extractTextFromDocx(file);
-      } else {
-        throw new Error('Unsupported file type. Please upload a PDF or DOCX.');
-      }
+      const extractedText = await resumeParserService.parseFile(file);
 
-      // Update the form state with the extracted text
-      setFormData(prev => ({ ...prev, resume_context: extractedText }));
+      // Update the form state with the extracted text and filename
+      setFormData(prev => ({ ...prev, resume_context: extractedText, filename: file.name }));
       addNotification('Resume text extracted successfully!', 'success');
 
     } catch (error) {
       addNotification(error.message, 'error');
       setFileName(''); // Clear file name on error
+      setPendingFile(null);
     }
   };
-  
-  // --- MODIFIED (Feature 1): handleSubmit no longer passes the file ---
-  const handleSubmit = (e) => {
+
+  // --- MODIFIED (Feature 1): handleSubmit saves file to IDB ---
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // We no longer pass `resumeFile`
-    onSave(formData);
+    try {
+      const savedProfile = await onSave(formData);
+
+      if (savedProfile && savedProfile.id && pendingFile) {
+        await storageService.saveFileLocal(savedProfile.id, pendingFile);
+        console.log("File saved to IDB for profile:", savedProfile.id);
+      }
+    } catch (error) {
+      console.error("Save failed", error);
+    }
   };
 
   // --- MODIFIED (Feature 1): This button just clears the file name ---
   const onRemoveFile = () => {
     setFileName('');
+    setPendingFile(null);
     // Optionally clear the file input
     const fileInput = document.getElementById('resume_file');
     if (fileInput) fileInput.value = '';
@@ -148,10 +102,10 @@ function ProfileForm({ profile: initialProfile, onSave, onCancel, loading }) {
   return (
     <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm max-w-4xl mx-auto">
       <h2 className="text-2xl font-bold mb-6 text-slate-800">{initialProfile.id ? 'Edit Profile' : 'Create New Profile'}</h2>
-      
+
       <div className="mb-6 border-b border-slate-200 pb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
         <InputField id="profile_name" name="profile_name" label="Profile Name" placeholder="e.g., Senior Frontend Developer" value={formData.profile_name} icon={Briefcase} type="text" onChange={handleChange} />
-        
+
         <div>
           <label htmlFor="experience_level" className="block text-sm font-medium text-slate-700 mb-1">Experience Level</label>
           <div className="relative">
@@ -159,16 +113,16 @@ function ProfileForm({ profile: initialProfile, onSave, onCancel, loading }) {
               <BarChartHorizontal className="w-5 h-5 text-slate-400" />
             </span>
             <select id="experience_level" name="experience_level" value={formData.experience_level} onChange={handleChange} className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md focus:ring-sky-500 focus:border-sky-500 transition bg-white">
-              {experienceLevels.map(level => ( <option key={level.value} value={level.value}>{level.label}</option> ))}
+              {experienceLevels.map(level => (<option key={level.value} value={level.value}>{level.label}</option>))}
             </select>
           </div>
         </div>
       </div>
-      
+
       {/* --- MODIFIED (Feature 1): Resume File Upload Section --- */}
       <div className="mb-6 border-b border-slate-200 pb-6">
         <h3 className="text-lg font-semibold text-slate-700 mb-4">Upload Resume to Extract Text (PDF/DOCX)</h3>
-        
+
         {/* This section is removed, as we no longer store the file URL */}
         {/* {formData.resume_file_url ? ( ... ) : ( ... )} */}
 
@@ -186,7 +140,7 @@ function ProfileForm({ profile: initialProfile, onSave, onCancel, loading }) {
             </div>
           </label>
           <input type="file" id="resume_file" name="resume_file" onChange={handleFileChange} className="sr-only" accept=".pdf,.doc,.docx" />
-          
+
           {fileName && (
             <button
               type="button"
@@ -271,7 +225,7 @@ export default function Profiles({ profiles, loading, onSave, onDeleteRequest })
       onSave={onSaveForm}
       onCancel={() => setEditingProfile(null)}
       loading={loading}
-      // `onRemoveResume` prop is removed
+    // `onRemoveResume` prop is removed
     />;
   }
 
@@ -295,10 +249,10 @@ export default function Profiles({ profiles, loading, onSave, onDeleteRequest })
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
                 <h3 className="font-bold text-lg text-slate-800">{profile.profile_name}</h3>
-                
+
                 {/* --- MODIFIED (Feature 1): Remove the "Resume Attached" badge --- */}
                 {/* {profile.resume_file_url && ( ... )} */}
-                
+
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setEditingProfile(profile)} className="p-2 hover:bg-slate-100 rounded-md text-slate-600 transition">
@@ -310,7 +264,7 @@ export default function Profiles({ profiles, loading, onSave, onDeleteRequest })
               </div>
             </div>
             <p className="mt-2 text-sm text-slate-600 line-clamp-3">{profile.resume_context}</p>
-         </div>
+          </div>
         ))}
       </div>
     </div>

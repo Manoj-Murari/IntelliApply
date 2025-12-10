@@ -118,10 +118,15 @@ def run_resume_crew(job_description: str, resume_context: str, profile_data: dic
         if not result:
             raise Exception("Crew returned no result.")
             
-        final_json_string = result.model_dump_json()
+        # The result is a CrewOutput object. valid JSON should be in .raw or .json_dict
+        # The user's output showed the JSON string inside the "raw" field.
+        final_output = result.raw
         
-        log.info(f"Final output length: {len(final_json_string)} characters")
-        return final_json_string
+        # If it's a Pydantic model output, it might be in result.pydantic or result.to_dict()
+        # But based on the user's log, 'raw' contained the stringified JSON they wanted.
+        
+        log.info(f"Final output length: {len(final_output)} characters")
+        return final_output
         
     except Exception as e:
         log.error(f"CrewAI kickoff failed: {e}", exc_info=True)
